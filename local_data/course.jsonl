@@ -1,0 +1,5 @@
+{"course_id": "CS101", "course_name": "Introduction to Computer Science", "instructor": "Dr. Smith", "description": "A foundational course in computer science covering programming basics, algorithms, and problem-solving techniques."}
+{"course_id": "MATH201", "course_name": "Calculus I", "instructor": "Prof. Johnson", "description": "An introductory course in calculus, focusing on limits, derivatives, and integrals of functions of one variable."}
+{"course_id": "PHYS301", "course_name": "Physics: Mechanics", "instructor": "Dr. Lee", "description": "A comprehensive study of classical mechanics, including Newton's laws, energy, momentum, and rotational dynamics."}
+{"course_id": "ENG102", "course_name": "English Literature", "instructor": "Prof. Davis", "description": "An exploration of English literature from the Renaissance to the modern era, analyzing key texts and literary movements."}
+{"course_id": "BIO150", "course_name": "Introduction to Biology", "instructor": "Dr. Martinez", "description": "A survey course covering fundamental concepts in biology, including cell structure, genetics, evolution, and ecology."}
