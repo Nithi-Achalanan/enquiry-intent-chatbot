@@ -8,7 +8,6 @@ from langgraph.graph import END, START, StateGraph
 
 from src.agents.data_retriever import search_agent
 from src.agents.template_design import template_agent
-from src.config import get_model_configuration
 from src.state import GraphState
 from src.tools.course_id import find_course_by_id
 from src.tools.keyword_search import multiple_keyword_search
@@ -141,5 +140,4 @@ def build_main_graph():
     return builder.compile()
 
 
-get_model_configuration()
 graph = build_main_graph()

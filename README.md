@@ -11,7 +11,7 @@ Course-enquiry chatbot powered by the existing LangGraph workflow, with a FastAP
    pip install -r requirements.txt
    ```
 
-3. Copy `.env.example` to `.env`, then set a non-empty `OPENAI_API_KEY` and `PRIMARY_MODEL`. `FALLBACK_MODEL` is optional. The application validates these settings at startup and exits with a clear error if either required value is missing.
+3. Copy `.env.example` to `.env`, then set a non-empty `GROQ_API_KEY` and `GROQ_MODEL`. The application validates these settings at startup and exits with a clear error if either required value is missing.
 4. Start the application:
 
    ```bash

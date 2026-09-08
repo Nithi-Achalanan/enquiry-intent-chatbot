@@ -18,8 +18,7 @@ class ModelConfigurationError(RuntimeError):
 @dataclass(frozen=True)
 class ModelConfiguration:
     api_key: str
-    primary_model: str
-    fallback_model: str | None
+    model: str
 
 
 def _environment_value(name: str) -> str | None:
@@ -29,12 +28,11 @@ def _environment_value(name: str) -> str | None:
 
 def get_model_configuration() -> ModelConfiguration:
     """Return validated AI configuration without exposing secret values."""
-    api_key = _environment_value("OPENAI_API_KEY")
-    primary_model = _environment_value("PRIMARY_MODEL")
-    fallback_model = _environment_value("FALLBACK_MODEL")
+    api_key = _environment_value("GROQ_API_KEY")
+    model = _environment_value("GROQ_MODEL")
     missing = [
         name
-        for name, value in (("OPENAI_API_KEY", api_key), ("PRIMARY_MODEL", primary_model))
+        for name, value in (("GROQ_API_KEY", api_key), ("GROQ_MODEL", model))
         if value is None
     ]
     if missing:
@@ -43,4 +41,4 @@ def get_model_configuration() -> ModelConfiguration:
             f"Missing required AI configuration: {variables}. "
             "Set the values in the environment or .env file using .env.example; the application will not start."
         )
-    return ModelConfiguration(api_key=api_key, primary_model=primary_model, fallback_model=fallback_model)
+    return ModelConfiguration(api_key=api_key, model=model)

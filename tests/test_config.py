@@ -12,7 +12,7 @@ class ModelConfigurationTests(unittest.TestCase):
         environment = {
             key: value
             for key, value in os.environ.items()
-            if key not in {"OPENAI_API_KEY", "PRIMARY_MODEL", "FALLBACK_MODEL"}
+            if key not in {"GROQ_API_KEY", "GROQ_MODEL"}
         }
         environment.update(values)
         return environment
@@ -20,50 +20,33 @@ class ModelConfigurationTests(unittest.TestCase):
     def test_missing_api_key_is_rejected(self) -> None:
         with patch.dict(
             os.environ,
-            self._environment(PRIMARY_MODEL="gpt-4o-mini"),
+            self._environment(GROQ_MODEL="openai/gpt-oss-20b"),
             clear=True,
         ):
-            with self.assertRaisesRegex(ModelConfigurationError, "OPENAI_API_KEY"):
+            with self.assertRaisesRegex(ModelConfigurationError, "GROQ_API_KEY"):
                 get_model_configuration()
 
-    def test_missing_primary_model_is_rejected(self) -> None:
+    def test_missing_model_is_rejected(self) -> None:
         with patch.dict(
             os.environ,
-            self._environment(OPENAI_API_KEY="test-key"),
+            self._environment(GROQ_API_KEY="test-key"),
             clear=True,
         ):
-            with self.assertRaisesRegex(ModelConfigurationError, "PRIMARY_MODEL"):
+            with self.assertRaisesRegex(ModelConfigurationError, "GROQ_MODEL"):
                 get_model_configuration()
 
-    def test_model_names_are_trimmed_and_blank_fallback_is_optional(self) -> None:
+    def test_model_name_is_trimmed(self) -> None:
         with patch.dict(
             os.environ,
             self._environment(
-                OPENAI_API_KEY="test-key",
-                PRIMARY_MODEL="  gpt-4o-mini  ",
-                FALLBACK_MODEL="   ",
+                GROQ_API_KEY="test-key",
+                GROQ_MODEL="  openai/gpt-oss-20b  ",
             ),
             clear=True,
         ):
             configuration = get_model_configuration()
 
-        self.assertEqual(configuration.primary_model, "gpt-4o-mini")
-        self.assertIsNone(configuration.fallback_model)
-
-    def test_fallback_model_is_trimmed_when_supplied(self) -> None:
-        with patch.dict(
-            os.environ,
-            self._environment(
-                OPENAI_API_KEY="test-key",
-                PRIMARY_MODEL="gpt-4o-mini",
-                FALLBACK_MODEL="  gpt-4.1-mini  ",
-            ),
-            clear=True,
-        ):
-            configuration = get_model_configuration()
-
-        self.assertEqual(configuration.primary_model, "gpt-4o-mini")
-        self.assertEqual(configuration.fallback_model, "gpt-4.1-mini")
+        self.assertEqual(configuration.model, "openai/gpt-oss-20b")
 
 
 if __name__ == "__main__":
