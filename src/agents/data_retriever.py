@@ -7,7 +7,6 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from src.agents.template_design import primary_and_fallback_models
 from src.state import GraphState
 from src.tools.keyword_search import course_ids_in_query
 
@@ -123,6 +122,4 @@ def search_agent(state: GraphState) -> dict:
         return {"search_agent_state_memory": [AIMessage(content="Retrieving course information.", tool_calls=[{
             "id": str(uuid.uuid4()), "name": tool_call["name"], "args": tool_call["args"], "type": "tool_call",
         }])]}
-    primary_model, fallback_model = primary_and_fallback_models()
-    note = "" if primary_model or fallback_model else " Deterministic local fallback used."
-    return {"search_agent_state_memory": [AIMessage(content=f"Retrieved evidence is sufficient.{note}")], "final_answer": _final_answer(state, plan)}
+    return {"search_agent_state_memory": [AIMessage(content="Retrieved evidence is sufficient.")], "final_answer": _final_answer(state, plan)}

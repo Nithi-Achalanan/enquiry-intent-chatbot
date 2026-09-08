@@ -1,12 +1,11 @@
 """Guide agent: decide how a course enquiry should be answered."""
 
 import json
-import os
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from dotenv import load_dotenv
 
+from src.config import get_model_configuration
 from src.state import GraphState
 from src.tools.keyword_search import course_ids_in_query
 
@@ -19,9 +18,6 @@ INJECTION_PATTERNS = (
     "ignore previous instructions", "system prompt", "hidden instructions", "reveal prompt",
     "forget your course role", "developer message", "tool messages", "internal state",
 )
-
-load_dotenv()
-
 
 def is_prompt_injection(query: str) -> bool:
     return any(pattern in query.lower() for pattern in INJECTION_PATTERNS)
@@ -80,16 +76,15 @@ def template_agent(state: GraphState) -> dict:
     ]}
 
 
-def primary_and_fallback_models() -> tuple[str | None, str | None]:
-    """Read configured model names; deterministic operation remains the safe final fallback."""
-    return os.getenv("PRIMARY_MODEL"), os.getenv("FALLBACK_MODEL")
+def primary_and_fallback_models() -> tuple[str, str | None]:
+    """Read validated configured model names."""
+    configuration = get_model_configuration()
+    return configuration.primary_model, configuration.fallback_model
 
 
 def _model_plan(query: str, conversation: list[str], default_plan: dict[str, Any]) -> dict[str, Any]:
-    """Use the primary model then fallback model when configured; retain a safe local plan on failure."""
+    """Use the primary model then optional fallback; retain the plan for provider failures."""
     primary_model, fallback_model = primary_and_fallback_models()
-    if not os.getenv("OPENAI_API_KEY"):
-        return default_plan
     try:
         from langchain_openai import ChatOpenAI
     except ImportError:
