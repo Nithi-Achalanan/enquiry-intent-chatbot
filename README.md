@@ -21,3 +21,5 @@ Course-enquiry chatbot powered by the existing LangGraph workflow, with a FastAP
 Open `http://localhost:8000`. The chat interface sends enquiries to `POST /api/chat`; `GET /api/health` reports service availability.
 
 The API delegates answers and related-course retrieval to the existing LangGraph workflow; it does not duplicate agent or tool logic.
+
+The guide agent uses Groq's native JSON Schema output mode so `openai/gpt-oss` models return a validated enquiry plan instead of an unreliable forced tool call.

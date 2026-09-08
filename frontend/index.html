@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#081321" />
+    <link rel="icon" href="data:," />
+    <title>Enquiry Intent Chatbot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Enquiry Intent Chatbot home">
+          <span class="brand-mark" aria-hidden="true">🤖</span>
+          <span>
+            <strong>Enquiry Intent<br />Chatbot</strong>
+            <small>Course Assistant</small>
+          </span>
+        </a>
+
+        <nav class="nav-list" aria-label="Primary navigation">
+          <a class="nav-item is-active" href="#chat"><span aria-hidden="true">◌</span> Chat</a>
+          <a class="nav-item" href="#courses"><span aria-hidden="true">♧</span> Explore Courses</a>
+          <a class="nav-item" href="#enquiries"><span aria-hidden="true">▤</span> My Enquiries</a>
+          <a class="nav-item" href="#help"><span aria-hidden="true">?</span> Help &amp; Support</a>
+        </nav>
+
+        <section class="sidebar-promo" aria-label="About the assistant">
+          <span aria-hidden="true">✦</span>
+          <h2>Learn Today<br />Build Tomorrow</h2>
+          <p>Get answers about our courses, programs and admissions instantly.</p>
+          <div class="book-stack" aria-hidden="true"><i></i><i></i><i></i></div>
+        </section>
+      </aside>
+
+      <section class="chat-panel" id="chat" aria-label="Course assistant chat">
+        <header class="topbar">
+          <div class="status-message">
+            <span class="moon" aria-hidden="true">☾</span>
+            <span><strong>Good evening!</strong><small>Here to help with your learning journey.</small></span>
+          </div>
+        </header>
+
+        <div class="conversation" id="conversation" role="log" aria-live="polite" aria-label="Conversation">
+          <article class="message-row assistant-message">
+            <div class="avatar bot-avatar" aria-hidden="true">🤖</div>
+            <div class="message-content">
+              <div class="bubble">Hi! I’m your course assistant. I can help you with information about our courses, fees, duration, prerequisites and more. What would you like to know?</div>
+            </div>
+          </article>
+        </div>
+
+        <form class="composer" id="chat-form">
+          <label class="attachment" for="message-input" aria-hidden="true">⌕</label>
+          <textarea id="message-input" name="query" rows="1" placeholder="Ask about a course..." autocomplete="off" required></textarea>
+          <button id="send-button" type="submit"><span aria-hidden="true">↗</span> Send</button>
+        </form>
+      </section>
+    </main>
+
+    <template id="course-card-template">
+      <article class="course-card">
+        <div class="course-heading">
+          <span class="course-symbol" aria-hidden="true">✦</span>
+          <div><small class="course-id"></small><h3 class="course-name"></h3></div>
+          <span class="level-badge"></span>
+        </div>
+        <p class="course-description"></p>
+        <div class="course-meta"></div>
+      </article>
+    </template>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

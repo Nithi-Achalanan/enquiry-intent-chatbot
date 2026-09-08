@@ -1,29 +1,118 @@
-"""Small local entry point for the course enquiry chatbot."""
+"""FastAPI adapter and local entry point for the course enquiry chatbot."""
+
+from __future__ import annotations
 
 import json
+import logging
 import sys
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
-from src.graph import build_main_graph
+from fastapi import FastAPI, HTTPException
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from src.graph import graph
+
+
+logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+COURSE_DATA_PATH = PROJECT_ROOT / "local_data" / "course.jsonl"
+
+
+class ConversationMessage(BaseModel):
+    """A prior browser message adapted to the graph's string conversation state."""
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1)
+
+
+class ChatRequest(BaseModel):
+    query: str = Field(min_length=1)
+    conversation: list[ConversationMessage] = Field(default_factory=list)
+
+
+class RelatedCourse(BaseModel):
+    course_id: str
+    course_name: str
+    description: str | None = None
+    instructor: str | None = None
+    category: str | None = None
+    level: str | None = None
+    duration: str | None = None
+    schedule: str | None = None
+    price: float | None = None
+    score: float | None = None
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    related_courses: list[RelatedCourse] = Field(default_factory=list)
+
+
+def _course_catalog() -> dict[str, dict[str, Any]]:
+    """Read the catalogue only to verify that returned artifacts are real courses."""
+    courses = json.loads(COURSE_DATA_PATH.read_text(encoding="utf-8"))
+    return {
+        str(course.get("course_id", "")).upper(): course
+        for course in courses
+        if isinstance(course, dict) and course.get("course_id")
+    }
+
+
+def _rank(item: dict[str, Any]) -> int:
+    try:
+        return int(item.get("rank", 999))
+    except (TypeError, ValueError):
+        return 999
+
+
+def _score(item: dict[str, Any]) -> float | None:
+    value = item.get("score")
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def extract_related_courses(retrieved_context_raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Expose only real retrieved courses, preserving retrieval rank/order."""
+    """Return deduplicated retrieved course artifacts in their retrieval order."""
+    try:
+        catalog = _course_catalog()
+    except (OSError, ValueError, json.JSONDecodeError):
+        logger.warning("Unable to validate retrieved courses against the local catalogue")
+        return []
+
     related_courses: list[dict[str, Any]] = []
     seen: set[str] = set()
-    ranked = sorted(
-        (item for item in retrieved_context_raw if isinstance(item, dict) and isinstance(item.get("course"), dict)),
-        key=lambda item: int(item.get("rank", 999)),
+    artifacts = sorted(
+        (
+            item
+            for item in retrieved_context_raw
+            if isinstance(item, dict) and isinstance(item.get("course"), dict)
+        ),
+        key=_rank,
     )
-    for item in ranked:
-        course = item["course"]
-        if course["course_id"] not in seen:
-            related_courses.append(course)
-            seen.add(course["course_id"])
+    for artifact in artifacts:
+        course_id = str(artifact["course"].get("course_id", "")).upper()
+        course = catalog.get(course_id)
+        if not course or course_id in seen:
+            continue
+        related_courses.append({**course, "score": _score(artifact)})
+        seen.add(course_id)
     return related_courses
 
 
+def adapt_conversation(messages: list[ConversationMessage]) -> list[str]:
+    """Convert API messages to the existing GraphState.conversation format."""
+    return [f"{message.role}: {message.content.strip()}" for message in messages if message.content.strip()]
+
+
 def run_chatbot(query: str, conversation: list[str] | None = None) -> dict[str, Any]:
+    """Execute the existing graph without moving agent logic into the API layer."""
     initial_state = {
         "conversation": conversation or [],
         "query": query,
@@ -33,11 +122,40 @@ def run_chatbot(query: str, conversation: list[str] | None = None) -> dict[str, 
         "search_attempts": 0,
         "max_search_attempts": 4,
     }
-    result = build_main_graph().invoke(initial_state)
+    result = graph.invoke(initial_state)
     return {
         "answer": result.get("final_answer", "ไม่สามารถสร้างคำตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้งครับ"),
         "related_courses": extract_related_courses(result.get("retrieved_context_raw", [])),
     }
+
+
+app = FastAPI(title="Enquiry Intent Chatbot")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR, check_dir=False), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def index() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "index.html")
+
+
+@app.get("/api/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest) -> ChatResponse:
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=422, detail="Query must not be blank.")
+
+    try:
+        result = await run_in_threadpool(run_chatbot, query, adapt_conversation(request.conversation))
+    except Exception:
+        logger.exception("Chat graph execution failed")
+        raise HTTPException(status_code=500, detail="Unable to process the enquiry.") from None
+
+    return ChatResponse(**result)
 
 
 if __name__ == "__main__":
