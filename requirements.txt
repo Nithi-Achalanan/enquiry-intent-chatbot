@@ -1,16 +1,5 @@
-from typing import TypedDict
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from src.tools.multiple_keyword_search import SearchResult
-
-
-class GraphState(TypedDict, total=False):
-    conversation: list[str]
-    query: str
-
-# search agent artifacts
-    summary_agent_state_memory: list[HumanMessage | SystemMessage | ToolMessage | AIMessage]
-    retrieved_context: list
-    search_attempts: int
-    max_search_attempts: int
-
-    final_report: str
+langchain-core>=0.3,<1
+langgraph>=0.2,<1
+rapidfuzz>=3.0,<4
+python-dotenv>=1.0,<2
+langchain-openai>=0.2,<1
