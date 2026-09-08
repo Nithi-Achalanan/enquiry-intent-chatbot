@@ -23,3 +23,5 @@ Open `http://localhost:8000`. The chat interface sends enquiries to `POST /api/c
 The API delegates answers and related-course retrieval to the existing LangGraph workflow; it does not duplicate agent or tool logic.
 
 The guide agent uses Groq's native JSON Schema output mode so `openai/gpt-oss` models return a validated enquiry plan instead of an unreliable forced tool call.
+
+Locally generated integration-evaluation artifacts are kept under the ignored `test_results/` directory.
