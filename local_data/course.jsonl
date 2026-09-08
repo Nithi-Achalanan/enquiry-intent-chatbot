@@ -1,5 +1,276 @@
-{"course_id": "CS101", "course_name": "Introduction to Computer Science", "instructor": "Dr. Smith", "description": "A foundational course in computer science covering programming basics, algorithms, and problem-solving techniques."}
-{"course_id": "MATH201", "course_name": "Calculus I", "instructor": "Prof. Johnson", "description": "An introductory course in calculus, focusing on limits, derivatives, and integrals of functions of one variable."}
-{"course_id": "PHYS301", "course_name": "Physics: Mechanics", "instructor": "Dr. Lee", "description": "A comprehensive study of classical mechanics, including Newton's laws, energy, momentum, and rotational dynamics."}
-{"course_id": "ENG102", "course_name": "English Literature", "instructor": "Prof. Davis", "description": "An exploration of English literature from the Renaissance to the modern era, analyzing key texts and literary movements."}
-{"course_id": "BIO150", "course_name": "Introduction to Biology", "instructor": "Dr. Martinez", "description": "A survey course covering fundamental concepts in biology, including cell structure, genetics, evolution, and ecology."}
+[
+  {
+    "course_id": "CS101",
+    "course_name": "พื้นฐานวิทยาการคอมพิวเตอร์",
+    "instructor": "ดร. สมิธ",
+    "description": "หลักสูตรพื้นฐานด้านวิทยาการคอมพิวเตอร์ ครอบคลุมการเขียนโปรแกรมเบื้องต้น อัลกอริทึม การคิดเชิงคำนวณ และเทคนิคการแก้ปัญหา เหมาะสำหรับผู้ที่ไม่มีพื้นฐานด้าน Computer Science มาก่อน",
+    "category": "Computer Science",
+    "level": "Beginner",
+    "target_audience": "ผู้เริ่มต้นด้านวิทยาการคอมพิวเตอร์ นักเรียน นักศึกษา และผู้ที่ต้องการปูพื้นฐานก่อนเรียนด้าน Programming หรือ Software Development",
+    "duration": "30 ชั่วโมง",
+    "schedule": "เสาร์-อาทิตย์ 09:00-12:00 น.",
+    "price": 4500,
+    "prerequisites": [
+      "ไม่จำเป็นต้องมีพื้นฐาน Programming",
+      "มีทักษะการใช้คอมพิวเตอร์เบื้องต้น"
+    ],
+    "keywords": [
+      "computer science",
+      "วิทยาการคอมพิวเตอร์",
+      "programming",
+      "การเขียนโปรแกรม",
+      "algorithm",
+      "อัลกอริทึม",
+      "problem solving",
+      "beginner",
+      "พื้นฐาน"
+    ]
+  },
+  {
+    "course_id": "CS201",
+    "course_name": "การเขียนโปรแกรม Python สำหรับผู้เริ่มต้น",
+    "instructor": "อาจารย์ นพดล",
+    "description": "หลักสูตรสอนการเขียนโปรแกรมด้วยภาษา Python ตั้งแต่พื้นฐาน โดยครอบคลุมตัวแปร ชนิดข้อมูล เงื่อนไข loop function และการจัดการข้อมูลเบื้องต้น พร้อมแบบฝึกหัดสำหรับผู้ที่ไม่เคยเขียนโปรแกรมมาก่อน",
+    "category": "Programming",
+    "level": "Beginner",
+    "target_audience": "ผู้เริ่มต้นเขียนโปรแกรม นักเรียน นักศึกษา และคนทำงานที่ต้องการเริ่มต้นเรียน Python",
+    "duration": "24 ชั่วโมง",
+    "schedule": "เสาร์ 09:00-16:00 น.",
+    "price": 3900,
+    "prerequisites": [
+      "ไม่จำเป็นต้องมีพื้นฐาน Programming",
+      "มีทักษะการใช้คอมพิวเตอร์เบื้องต้น"
+    ],
+    "keywords": [
+      "python",
+      "python programming",
+      "programming",
+      "เขียนโปรแกรม",
+      "ภาษา python",
+      "beginner",
+      "พื้นฐาน",
+      "coding"
+    ]
+  },
+  {
+    "course_id": "CS301",
+    "course_name": "Python สำหรับ Data Science",
+    "instructor": "ดร. พิมพ์ชนก",
+    "description": "หลักสูตรการใช้ Python เพื่อวิเคราะห์และจัดการข้อมูล ครอบคลุม NumPy, Pandas, Data Visualization และการวิเคราะห์ข้อมูลเบื้องต้น เหมาะสำหรับผู้ที่ต้องการนำ Python ไปใช้กับงาน Data Science",
+    "category": "Data Science",
+    "level": "Intermediate",
+    "target_audience": "ผู้ที่มีพื้นฐาน Python และต้องการต่อยอดไปด้าน Data Analysis หรือ Data Science",
+    "duration": "36 ชั่วโมง",
+    "schedule": "เสาร์-อาทิตย์ 09:00-16:00 น.",
+    "price": 6500,
+    "prerequisites": [
+      "มีพื้นฐาน Python",
+      "เข้าใจ Programming เบื้องต้น",
+      "มีพื้นฐานคณิตศาสตร์ระดับมัธยมศึกษา"
+    ],
+    "keywords": [
+      "python",
+      "data science",
+      "data analysis",
+      "pandas",
+      "numpy",
+      "data visualization",
+      "วิเคราะห์ข้อมูล",
+      "วิทยาการข้อมูล",
+      "intermediate"
+    ]
+  },
+  {
+    "course_id": "AI101",
+    "course_name": "ปูพื้นฐานปัญญาประดิษฐ์",
+    "instructor": "ดร. ลี",
+    "description": "หลักสูตรแนะนำแนวคิดพื้นฐานของ Artificial Intelligence ครอบคลุม Machine Learning, Deep Learning, Generative AI และการประยุกต์ใช้ AI ในงานจริง เหมาะสำหรับผู้ที่สนใจ AI แต่ยังไม่แน่ใจว่าควรเริ่มต้นจากด้านใด",
+    "category": "Artificial Intelligence",
+    "level": "Beginner",
+    "target_audience": "ผู้เริ่มต้นที่สนใจ AI คนทำงาน นักธุรกิจ Product Manager และผู้ที่ต้องการเข้าใจภาพรวมของ AI โดยไม่จำเป็นต้องมีพื้นฐาน Machine Learning",
+    "duration": "18 ชั่วโมง",
+    "schedule": "พุธและศุกร์ 18:00-21:00 น.",
+    "price": 4200,
+    "prerequisites": [
+      "ไม่จำเป็นต้องมีพื้นฐาน AI",
+      "มีทักษะการใช้คอมพิวเตอร์ทั่วไป"
+    ],
+    "keywords": [
+      "AI",
+      "artificial intelligence",
+      "ปัญญาประดิษฐ์",
+      "machine learning",
+      "deep learning",
+      "generative AI",
+      "gen AI",
+      "beginner",
+      "พื้นฐาน AI"
+    ]
+  },
+  {
+    "course_id": "AI201",
+    "course_name": "Machine Learning Fundamentals",
+    "instructor": "ดร. มาร์ติเนซ",
+    "description": "หลักสูตรพื้นฐาน Machine Learning ตั้งแต่แนวคิด Supervised Learning และ Unsupervised Learning ไปจนถึงการสร้างและประเมินโมเดล เช่น Linear Regression, Logistic Regression, Decision Tree และ Clustering",
+    "category": "Machine Learning",
+    "level": "Intermediate",
+    "target_audience": "นักพัฒนา Software Engineer Data Analyst และผู้ที่ต้องการเริ่มต้นทำ Machine Learning อย่างเป็นระบบ",
+    "duration": "40 ชั่วโมง",
+    "schedule": "เสาร์-อาทิตย์ 09:00-16:00 น.",
+    "price": 7900,
+    "prerequisites": [
+      "มีพื้นฐาน Python",
+      "เข้าใจ Programming เบื้องต้น",
+      "มีพื้นฐานคณิตศาสตร์และสถิติเบื้องต้น"
+    ],
+    "keywords": [
+      "machine learning",
+      "ML",
+      "AI",
+      "artificial intelligence",
+      "supervised learning",
+      "unsupervised learning",
+      "regression",
+      "classification",
+      "clustering",
+      "python"
+    ]
+  },
+  {
+    "course_id": "AI301",
+    "course_name": "Generative AI และ Large Language Models",
+    "instructor": "อาจารย์ เดวิด",
+    "description": "หลักสูตรเชิงปฏิบัติเกี่ยวกับ Generative AI และ Large Language Models ครอบคลุมพื้นฐาน LLM, Prompt Engineering, Retrieval-Augmented Generation, Tool Calling และการออกแบบ AI Application",
+    "category": "Generative AI",
+    "level": "Advanced",
+    "target_audience": "Software Engineer, AI Engineer, Data Scientist และผู้ที่มีพื้นฐาน Programming และต้องการพัฒนา Application ที่ใช้ Generative AI",
+    "duration": "32 ชั่วโมง",
+    "schedule": "เสาร์ 09:00-17:00 น.",
+    "price": 8500,
+    "prerequisites": [
+      "มีพื้นฐาน Python",
+      "มีประสบการณ์ Programming",
+      "มีความเข้าใจพื้นฐาน Machine Learning หรือ AI"
+    ],
+    "keywords": [
+      "generative AI",
+      "gen AI",
+      "LLM",
+      "large language model",
+      "AI application",
+      "prompt engineering",
+      "RAG",
+      "retrieval augmented generation",
+      "tool calling",
+      "AI engineer"
+    ]
+  },
+  {
+    "course_id": "MATH201",
+    "course_name": "แคลคูลัส 1",
+    "instructor": "ศ. จอห์นสัน",
+    "description": "หลักสูตรแคลคูลัสเบื้องต้น ครอบคลุมเรื่องลิมิต อนุพันธ์ และปริพันธ์ของฟังก์ชันตัวแปรเดียว พร้อมการประยุกต์ใช้ในการแก้ปัญหาทางคณิตศาสตร์",
+    "category": "Mathematics",
+    "level": "Beginner",
+    "target_audience": "นักเรียน นักศึกษา และผู้ที่ต้องการปูพื้นฐานแคลคูลัสสำหรับการเรียนต่อด้านวิทยาศาสตร์ วิศวกรรมศาสตร์ หรือ Data Science",
+    "duration": "42 ชั่วโมง",
+    "schedule": "จันทร์และพุธ 18:00-21:00 น.",
+    "price": 4800,
+    "prerequisites": [
+      "มีพื้นฐานพีชคณิตระดับมัธยมศึกษา",
+      "เข้าใจฟังก์ชันเบื้องต้น"
+    ],
+    "keywords": [
+      "calculus",
+      "แคลคูลัส",
+      "limit",
+      "ลิมิต",
+      "derivative",
+      "อนุพันธ์",
+      "integral",
+      "ปริพันธ์",
+      "mathematics",
+      "คณิตศาสตร์"
+    ]
+  },
+  {
+    "course_id": "PHYS301",
+    "course_name": "ฟิสิกส์: กลศาสตร์",
+    "instructor": "ดร. ลี",
+    "description": "หลักสูตรฟิสิกส์ด้านกลศาสตร์คลาสสิก ครอบคลุมกฎการเคลื่อนที่ของนิวตัน พลังงาน โมเมนตัม การเคลื่อนที่แบบหมุน และการประยุกต์ใช้สมการทางฟิสิกส์ในการแก้โจทย์",
+    "category": "Physics",
+    "level": "Intermediate",
+    "target_audience": "นักเรียน นักศึกษา และผู้ที่ต้องการพื้นฐานฟิสิกส์สำหรับการเรียนต่อด้านวิทยาศาสตร์และวิศวกรรมศาสตร์",
+    "duration": "36 ชั่วโมง",
+    "schedule": "อังคารและพฤหัสบดี 18:00-21:00 น.",
+    "price": 5200,
+    "prerequisites": [
+      "มีพื้นฐานฟิสิกส์ระดับมัธยมศึกษา",
+      "มีพื้นฐานคณิตศาสตร์"
+    ],
+    "keywords": [
+      "physics",
+      "ฟิสิกส์",
+      "mechanics",
+      "กลศาสตร์",
+      "Newton",
+      "กฎของนิวตัน",
+      "energy",
+      "พลังงาน",
+      "momentum",
+      "โมเมนตัม"
+    ]
+  },
+  {
+    "course_id": "ENG102",
+    "course_name": "วรรณกรรมอังกฤษ",
+    "instructor": "ศ. เดวิส",
+    "description": "หลักสูตรศึกษาวรรณกรรมอังกฤษตั้งแต่ยุค Renaissance จนถึงวรรณกรรมสมัยใหม่ วิเคราะห์งานวรรณกรรมสำคัญ แนวคิดทางวรรณกรรม และพัฒนาการของวรรณกรรมในแต่ละยุค",
+    "category": "English Literature",
+    "level": "Beginner",
+    "target_audience": "นักเรียน นักศึกษา และผู้ที่สนใจวรรณกรรม ภาษาอังกฤษ และประวัติศาสตร์วัฒนธรรม",
+    "duration": "30 ชั่วโมง",
+    "schedule": "เสาร์ 13:00-16:00 น.",
+    "price": 3500,
+    "prerequisites": [
+      "สามารถอ่านภาษาอังกฤษในระดับพื้นฐานได้"
+    ],
+    "keywords": [
+      "english",
+      "english literature",
+      "literature",
+      "วรรณกรรมอังกฤษ",
+      "วรรณกรรม",
+      "renaissance",
+      "modern literature",
+      "ภาษาอังกฤษ"
+    ]
+  },
+  {
+    "course_id": "BIO150",
+    "course_name": "พื้นฐานชีววิทยา",
+    "instructor": "ดร. มาร์ติเนซ",
+    "description": "หลักสูตรสำรวจแนวคิดพื้นฐานทางชีววิทยา ครอบคลุมโครงสร้างเซลล์ พันธุศาสตร์ วิวัฒนาการ ระบบนิเวศ และความสัมพันธ์ระหว่างสิ่งมีชีวิตกับสิ่งแวดล้อม",
+    "category": "Biology",
+    "level": "Beginner",
+    "target_audience": "ผู้เริ่มต้น นักเรียน นักศึกษา และผู้ที่ต้องการทำความเข้าใจพื้นฐานทางชีววิทยา",
+    "duration": "30 ชั่วโมง",
+    "schedule": "เสาร์-อาทิตย์ 13:00-16:00 น.",
+    "price": 4000,
+    "prerequisites": [
+      "ไม่จำเป็นต้องมีพื้นฐานชีววิทยา"
+    ],
+    "keywords": [
+      "biology",
+      "ชีววิทยา",
+      "cell",
+      "เซลล์",
+      "genetics",
+      "พันธุศาสตร์",
+      "evolution",
+      "วิวัฒนาการ",
+      "ecology",
+      "ระบบนิเวศ"
+    ]
+  }
+]
