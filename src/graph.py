@@ -11,6 +11,7 @@ from src.agents.template_design import template_agent
 from src.state import GraphState
 from src.tools.course_id import find_course_by_id
 from src.tools.course_catalog import load_course_catalog
+from src.tools.personal_data import load_personal_data
 
 
 def should_continue(state: GraphState, memory_key: str = "search_agent_state_memory") -> str:
@@ -26,6 +27,7 @@ def should_continue(state: GraphState, memory_key: str = "search_agent_state_mem
     return {
         "course_catalog": "course_catalog_tool",
         "course_id": "course_id_tool",
+        "personal_data": "personal_data_tool",
     }.get(tool_calls[0]["name"], END)
 
 
@@ -102,26 +104,37 @@ def course_id_node(state: GraphState) -> dict:
 def course_catalog_node(state: GraphState) -> dict:
     try:
         courses = load_course_catalog()
-        artifacts = [
-            {"tool_name": "course_catalog", "course": course, "rank": index}
-            for index, course in enumerate(courses, start=1)
-        ]
-        response = _tool_result(state, "course_catalog", artifacts, json.dumps(courses, ensure_ascii=False))
-        response["retrieved_context_raw"] = state.get("retrieved_context_raw", [])
+        artifact = {"tool_name": "course_catalog", "courses": courses}
+        response = _tool_result(state, "course_catalog", artifact, json.dumps(courses, ensure_ascii=False))
+        response["retrieved_context_raw"] = [*state.get("retrieved_context_raw", []), artifact]
         return response
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        response = _tool_result(state, "course_catalog", {"tool_name": "course_catalog", "error": "course catalogue unavailable"}, "Course catalogue is unavailable.")
-        response["retrieved_context_raw"] = state.get("retrieved_context_raw", [])
+        artifact = {"tool_name": "course_catalog", "error": "course catalogue unavailable"}
+        response = _tool_result(state, "course_catalog", artifact, "Course catalogue is unavailable.")
+        response["retrieved_context_raw"] = [*state.get("retrieved_context_raw", []), artifact]
+        return response
+
+
+def personal_data_node(state: GraphState) -> dict:
+    try:
+        profile = load_personal_data()
+        artifact = {"tool_name": "personal_data", "profile": profile}
+        response = _tool_result(state, "personal_data", artifact, json.dumps(profile, ensure_ascii=False))
+        response["retrieved_context_raw"] = [*state.get("retrieved_context_raw", []), artifact]
+        return response
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        artifact = {"tool_name": "personal_data", "error": "personal data unavailable"}
+        response = _tool_result(state, "personal_data", artifact, "Personal data is unavailable.")
+        response["retrieved_context_raw"] = [*state.get("retrieved_context_raw", []), artifact]
         return response
 
 
 def _capture_exact_course_artifact(state: GraphState, result: dict) -> dict:
-    """Add exact course lookup artifacts to the shared raw retrieval context."""
+    """Add exact lookup evidence, including not-found results, to shared context."""
     messages = result.get("search_agent_state_memory", [])
     if messages and isinstance(messages[0], ToolMessage) and isinstance(messages[0].artifact, dict):
         artifact = messages[0].artifact
-        if artifact.get("course"):
-            result["retrieved_context_raw"] = [*state.get("retrieved_context_raw", []), artifact]
+        result["retrieved_context_raw"] = [*state.get("retrieved_context_raw", []), artifact]
     return result
 
 
@@ -134,16 +147,19 @@ def build_retrieval_graph():
     builder.add_node("search_agent", search_agent)
     builder.add_node("course_catalog_tool", course_catalog_node)
     builder.add_node("course_id_tool", course_id_node_with_artifact)
+    builder.add_node("personal_data_tool", personal_data_node)
     builder.add_node("tool_call_limit_error", tool_call_limit_error_node)
     builder.add_edge(START, "search_agent")
     builder.add_conditional_edges("search_agent", should_continue, {
         "course_catalog_tool": "course_catalog_tool",
         "course_id_tool": "course_id_tool",
+        "personal_data_tool": "personal_data_tool",
         "tool_call_limit_error": "tool_call_limit_error",
         END: END,
     })
     builder.add_edge("course_catalog_tool", "search_agent")
     builder.add_edge("course_id_tool", "search_agent")
+    builder.add_edge("personal_data_tool", "search_agent")
     builder.add_edge("tool_call_limit_error", END)
     return builder.compile()
 

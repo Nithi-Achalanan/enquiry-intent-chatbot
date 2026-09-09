@@ -1,0 +1,45 @@
+{
+  "user_id": "USER-001",
+  "profile": {
+    "name": "Nithi",
+    "occupation": "AI Engineer",
+    "experience_level": "intermediate"
+  },
+  "interests": [
+    "Artificial Intelligence",
+    "Generative AI",
+    "Machine Learning",
+    "Python",
+    "Data Science"
+  ],
+  "learning_goals": [
+    "improve Python skills",
+    "learn Machine Learning",
+    "learn Generative AI"
+  ],
+  "skills": [
+    "Python",
+    "Machine Learning",
+    "Generative AI"
+  ],
+  "enrolled_courses": [
+    {
+      "course_id": "CS101",
+      "course_name": "พื้นฐานวิทยาการคอมพิวเตอร์",
+      "status": "completed"
+    }
+  ],
+  "completed_courses": [
+    "CS101"
+  ],
+  "preferences": {
+    "preferred_level": "intermediate",
+    "preferred_categories": [
+      "Computer Science",
+      "Artificial Intelligence",
+      "Data Science"
+    ],
+    "preferred_duration": "short",
+    "budget": 5000
+  }
+}

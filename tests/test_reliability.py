@@ -14,6 +14,41 @@ class HttpError(Exception):
 
 
 class ReliabilityTests(unittest.TestCase):
+    @patch("src.main.run_chatbot")
+    def test_api_accepts_missing_dialogue_state_for_backwards_compatibility(self, run_chatbot) -> None:
+        run_chatbot.return_value = {"answer": "ตอบแล้ว", "related_courses": [], "dialogue_state": {}}
+
+        response = TestClient(app).post("/api/chat", json={"query": "AI301 ราคาเท่าไร"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["dialogue_state"], {
+            "resolved_course_ids": [],
+            "last_primary_course_id": None,
+            "last_related_course_ids": [],
+            "active_constraints": {},
+            "unresolved_references": [],
+            "current_goal": None,
+        })
+
+    @patch("src.main.run_chatbot")
+    def test_api_passes_hidden_dialogue_state_to_the_graph_adapter(self, run_chatbot) -> None:
+        dialogue = {
+            "resolved_course_ids": ["AI201"],
+            "last_primary_course_id": "AI201",
+            "last_related_course_ids": [],
+            "active_constraints": {"topic": "Machine Learning"},
+            "unresolved_references": [],
+            "current_goal": "เรียน Machine Learning",
+        }
+        run_chatbot.return_value = {"answer": "ตอบแล้ว", "related_courses": [], "dialogue_state": dialogue}
+
+        response = TestClient(app).post("/api/chat", json={"query": "แล้วตัวนี้ล่ะ", "dialogue_state": dialogue})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["dialogue_state"], dialogue)
+        passed_state = run_chatbot.call_args.args[2]
+        self.assertEqual(passed_state.last_primary_course_id, "AI201")
+
     def test_retries_rate_limit_then_returns(self) -> None:
         calls = []
 

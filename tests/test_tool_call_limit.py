@@ -37,6 +37,15 @@ class ToolCallLimitTests(unittest.TestCase):
         self.assertTrue(result["tool_call_artifacts"][0]["limit_exceeded"])
         self.assertEqual(result["tool_call_artifacts"][0]["tool_name"], "course_catalog")
 
+    def test_personal_data_tool_routes_through_the_same_bounded_loop(self) -> None:
+        state = {
+            "search_agent_state_memory": [tool_message("personal_data", {})],
+            "tool_call_count": 0,
+            "max_tool_calls": 5,
+        }
+
+        self.assertEqual(should_continue(state), "personal_data_tool")
+
     @patch("src.main.graph.invoke")
     def test_application_raises_the_recorded_tool_call_limit_error(self, invoke) -> None:
         invoke.return_value = {"tool_call_limit_error": "Tool-call limit exceeded: attempted call 6; maximum is 5."}

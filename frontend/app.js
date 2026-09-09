@@ -1,4 +1,5 @@
 const conversation = [];
+let dialogueState = null;
 
 const chatForm = document.querySelector("#chat-form");
 const messageInput = document.querySelector("#message-input");
@@ -130,7 +131,7 @@ async function sendMessage(query) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, conversation: priorConversation }),
+      body: JSON.stringify({ query, conversation: priorConversation, dialogue_state: dialogueState }),
     });
 
     if (!response.ok) throw new Error("The server could not process the request.");
@@ -141,6 +142,9 @@ async function sendMessage(query) {
     const assistantMessage = createMessage("assistant", data.answer);
     addRelatedCourses(assistantMessage, data.related_courses);
     conversation.push({ role: "assistant", content: data.answer });
+    if (data.dialogue_state && typeof data.dialogue_state === "object") {
+      dialogueState = data.dialogue_state;
+    }
   } catch (error) {
     loadingMessage.remove();
     createMessage("assistant", "Unable to process your request. Please try again.", { error: true });

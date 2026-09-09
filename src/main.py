@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from src.graph import graph
 from src.reliability import ModelInvocationError
+from src.state import DialogueState
 
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class ConversationMessage(BaseModel):
 class ChatRequest(BaseModel):
     query: str = Field(min_length=1)
     conversation: list[ConversationMessage] = Field(default_factory=list)
+    dialogue_state: DialogueState | None = None
 
 
 class RelatedCourse(BaseModel):
@@ -51,6 +53,7 @@ class RelatedCourse(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     related_courses: list[RelatedCourse] = Field(default_factory=list)
+    dialogue_state: DialogueState
 
 
 def _course_catalog() -> dict[str, dict[str, Any]]:
@@ -63,39 +66,102 @@ def _course_catalog() -> dict[str, dict[str, Any]]:
     }
 
 
-def _rank(item: dict[str, Any]) -> int:
-    try:
-        return int(item.get("rank", 999))
-    except (TypeError, ValueError):
-        return 999
+def _as_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, BaseModel):
+        return value.model_dump()
+    return {}
 
 
-def extract_related_courses(retrieved_context_raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return deduplicated retrieved course artifacts in their retrieval order."""
+def _evidence_course_ids(retrieved_context_raw: list[dict[str, Any]]) -> set[str]:
+    """Collect course IDs from course-tool evidence, excluding unrelated artifacts."""
+    course_ids: set[str] = set()
+    for artifact in retrieved_context_raw:
+        if not isinstance(artifact, dict):
+            continue
+        tool_name = artifact.get("tool_name")
+        if tool_name not in {"course_catalog", "course_id"}:
+            continue
+        course = artifact.get("course")
+        if isinstance(course, dict) and course.get("course_id"):
+            course_ids.add(str(course["course_id"]).strip().upper())
+        courses = artifact.get("courses")
+        if isinstance(courses, list):
+            course_ids.update(
+                str(item["course_id"]).strip().upper()
+                for item in courses
+                if isinstance(item, dict) and item.get("course_id")
+            )
+    return course_ids
+
+
+def extract_related_courses(
+    final_result: Any,
+    retrieved_context_raw: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Materialize only Agent 2's selected, evidence-backed related courses."""
+    structured_result = _as_dict(final_result)
+    if structured_result.get("final_response_mode") in {"no_result", "refuse", "clarify"}:
+        return []
+    selected_ids = structured_result.get("related_course_ids", [])
+    if not isinstance(selected_ids, list):
+        return []
+
     try:
         catalog = _course_catalog()
     except (OSError, ValueError, json.JSONDecodeError):
         logger.warning("Unable to validate retrieved courses against the local catalogue")
         return []
 
+    evidence_ids = _evidence_course_ids(retrieved_context_raw)
     related_courses: list[dict[str, Any]] = []
     seen: set[str] = set()
-    artifacts = sorted(
-        (
-            item
-            for item in retrieved_context_raw
-            if isinstance(item, dict) and isinstance(item.get("course"), dict)
-        ),
-        key=_rank,
-    )
-    for artifact in artifacts:
-        course_id = str(artifact["course"].get("course_id", "")).upper()
+    for selected_id in selected_ids:
+        course_id = str(selected_id).strip().upper()
         course = catalog.get(course_id)
-        if not course or course_id in seen:
+        if not course or course_id not in evidence_ids or course_id in seen:
             continue
         related_courses.append(course)
         seen.add(course_id)
     return related_courses
+
+
+def _response_dialogue_state(result: dict[str, Any], previous: DialogueState) -> DialogueState:
+    """Prefer graph-produced state and provide a compatibility fallback during migration."""
+    base = previous
+    graph_state = result.get("dialogue_state")
+    if graph_state is not None:
+        try:
+            base = DialogueState.model_validate(_as_dict(graph_state))
+        except (TypeError, ValueError):
+            logger.warning("Graph returned an invalid dialogue state; using derived state")
+
+    plan = _as_dict(result.get("guide_plan"))
+    final_result = _as_dict(result.get("final_result"))
+    primary_course_id = final_result.get("primary_course_id", result.get("primary_course_id"))
+    related_course_ids = final_result.get("related_course_ids", result.get("related_course_ids"))
+    return DialogueState(
+        resolved_course_ids=result.get(
+            "resolved_course_ids",
+            plan.get("resolved_course_ids", base.resolved_course_ids),
+        ),
+        last_primary_course_id=primary_course_id or base.last_primary_course_id,
+        last_related_course_ids=(
+            related_course_ids
+            if isinstance(related_course_ids, list)
+            else base.last_related_course_ids
+        ),
+        active_constraints=result.get(
+            "active_constraints",
+            plan.get("active_constraints", base.active_constraints),
+        ),
+        unresolved_references=result.get(
+            "unresolved_references",
+            plan.get("unresolved_references", base.unresolved_references),
+        ),
+        current_goal=plan.get("semantic_intent", base.current_goal),
+    )
 
 
 def adapt_conversation(messages: list[ConversationMessage]) -> list[str]:
@@ -103,11 +169,20 @@ def adapt_conversation(messages: list[ConversationMessage]) -> list[str]:
     return [f"{message.role}: {message.content.strip()}" for message in messages if message.content.strip()]
 
 
-def run_chatbot(query: str, conversation: list[str] | None = None) -> dict[str, Any]:
+def run_chatbot(
+    query: str,
+    conversation: list[str] | None = None,
+    dialogue_state: DialogueState | dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Execute the existing graph without moving agent logic into the API layer."""
+    prior_dialogue_state = DialogueState.model_validate(dialogue_state or {})
     initial_state = {
         "conversation": conversation or [],
         "query": query,
+        "dialogue_state": prior_dialogue_state.model_dump(),
+        "resolved_course_ids": prior_dialogue_state.resolved_course_ids,
+        "active_constraints": prior_dialogue_state.active_constraints,
+        "unresolved_references": prior_dialogue_state.unresolved_references,
         "guide_agent_state_memory": [],
         "search_agent_state_memory": [],
         "retrieved_context_raw": [],
@@ -122,7 +197,11 @@ def run_chatbot(query: str, conversation: list[str] | None = None) -> dict[str, 
         raise RuntimeError(result["tool_call_limit_error"])
     return {
         "answer": result.get("final_answer", "ไม่สามารถสร้างคำตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้งครับ"),
-        "related_courses": extract_related_courses(result.get("retrieved_context_raw", [])),
+        "related_courses": extract_related_courses(
+            result.get("final_result"),
+            result.get("retrieved_context_raw", []),
+        ),
+        "dialogue_state": _response_dialogue_state(result, prior_dialogue_state).model_dump(),
     }
 
 
@@ -147,7 +226,12 @@ async def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=422, detail="Query must not be blank.")
 
     try:
-        result = await run_in_threadpool(run_chatbot, query, adapt_conversation(request.conversation))
+        result = await run_in_threadpool(
+            run_chatbot,
+            query,
+            adapt_conversation(request.conversation),
+            request.dialogue_state,
+        )
     except ModelInvocationError as error:
         logger.warning("chat_model_unavailable diagnostic=%s", error.artifact())
         if not error.diagnostic.retryable:
