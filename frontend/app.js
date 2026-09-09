@@ -98,7 +98,7 @@ function addRelatedCourses(message, courses) {
     addCourseMetadata(meta, "", course.instructor, "♙");
     addCourseMetadata(meta, "", course.duration, "◷");
     addCourseMetadata(meta, "", course.schedule, "▣");
-    addCourseMetadata(meta, "", course.price !== undefined && course.price !== null ? `$${course.price}` : null, "◇");
+    addCourseMetadata(meta, "", course.price !== undefined && course.price !== null ? `฿${course.price}` : null, "◇");
     if (!meta.childElementCount) meta.remove();
 
     grid.append(card);
