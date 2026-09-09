@@ -14,6 +14,15 @@ class HttpError(Exception):
 
 
 class ReliabilityTests(unittest.TestCase):
+    def test_evaluation_fails_missing_required_clarification_options(self) -> None:
+        observed = {
+            "plan": {"clarification_requires_retrieval": True},
+            "final_result": {"clarification_options": []},
+            "retrieved_context_raw": [],
+        }
+
+        self.assertEqual(evaluation._clarification_option_score(observed), evaluation.FAIL)
+
     @patch("src.main.run_chatbot")
     def test_api_accepts_missing_dialogue_state_for_backwards_compatibility(self, run_chatbot) -> None:
         run_chatbot.return_value = {"answer": "ตอบแล้ว", "related_courses": [], "dialogue_state": {}}
@@ -28,6 +37,10 @@ class ReliabilityTests(unittest.TestCase):
             "active_constraints": {},
             "unresolved_references": [],
             "current_goal": None,
+            "pending_clarification": None,
+            "clarification_count": 0,
+            "last_intent_family": None,
+            "last_response_mode": None,
         })
 
     @patch("src.main.run_chatbot")
@@ -39,6 +52,10 @@ class ReliabilityTests(unittest.TestCase):
             "active_constraints": {"topic": "Machine Learning"},
             "unresolved_references": [],
             "current_goal": "เรียน Machine Learning",
+            "pending_clarification": None,
+            "clarification_count": 0,
+            "last_intent_family": None,
+            "last_response_mode": None,
         }
         run_chatbot.return_value = {"answer": "ตอบแล้ว", "related_courses": [], "dialogue_state": dialogue}
 

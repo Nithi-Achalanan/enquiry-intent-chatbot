@@ -133,7 +133,10 @@ def _response_dialogue_state(result: dict[str, Any], previous: DialogueState) ->
     graph_state = result.get("dialogue_state")
     if graph_state is not None:
         try:
-            base = DialogueState.model_validate(_as_dict(graph_state))
+            base = DialogueState.model_validate({
+                **previous.model_dump(),
+                **_as_dict(graph_state),
+            })
         except (TypeError, ValueError):
             logger.warning("Graph returned an invalid dialogue state; using derived state")
 
@@ -141,27 +144,34 @@ def _response_dialogue_state(result: dict[str, Any], previous: DialogueState) ->
     final_result = _as_dict(result.get("final_result"))
     primary_course_id = final_result.get("primary_course_id", result.get("primary_course_id"))
     related_course_ids = final_result.get("related_course_ids", result.get("related_course_ids"))
-    return DialogueState(
-        resolved_course_ids=result.get(
+    value = base.model_dump()
+    value.update({
+        "resolved_course_ids": result.get(
             "resolved_course_ids",
             plan.get("resolved_course_ids", base.resolved_course_ids),
         ),
-        last_primary_course_id=primary_course_id or base.last_primary_course_id,
-        last_related_course_ids=(
+        "last_primary_course_id": primary_course_id or base.last_primary_course_id,
+        "last_related_course_ids": (
             related_course_ids
             if isinstance(related_course_ids, list)
             else base.last_related_course_ids
         ),
-        active_constraints=result.get(
+        "active_constraints": result.get(
             "active_constraints",
             plan.get("active_constraints", base.active_constraints),
         ),
-        unresolved_references=result.get(
+        "unresolved_references": result.get(
             "unresolved_references",
             plan.get("unresolved_references", base.unresolved_references),
         ),
-        current_goal=plan.get("semantic_intent", base.current_goal),
-    )
+        "current_goal": plan.get("semantic_intent", base.current_goal),
+        "last_intent_family": plan.get("intent_family", base.last_intent_family),
+        "last_response_mode": final_result.get(
+            "final_response_mode",
+            result.get("final_response_mode", base.last_response_mode),
+        ),
+    })
+    return DialogueState.model_validate(value)
 
 
 def adapt_conversation(messages: list[ConversationMessage]) -> list[str]:

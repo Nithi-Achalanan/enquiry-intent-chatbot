@@ -49,6 +49,14 @@ class ClarificationStrategy(StrEnum):
     ASK_OPTIONAL = "ask_optional"
 
 
+class PendingClarificationResolution(StrEnum):
+    NONE = "none"
+    ANSWERED = "answered"
+    PARTIALLY_ANSWERED = "partially_answered"
+    REJECTED = "rejected"
+    TOPIC_CHANGED = "topic_changed"
+
+
 class GuidePlan(BaseModel):
     """Structured semantic plan passed directly from Agent 1 to Agent 2."""
 
@@ -69,6 +77,11 @@ class GuidePlan(BaseModel):
     clarification_needed: bool = False
     clarification_strategy: ClarificationStrategy = ClarificationStrategy.NONE
     clarification_question: str | None = None
+    pending_clarification_resolution: PendingClarificationResolution = PendingClarificationResolution.NONE
+    clarification_target: str | None = None
+    clarification_requires_retrieval: bool = False
+    clarification_option_goal: str | None = None
+    clarification_limit_reached: bool = False
     can_offer_partial_answer: bool = False
 
     @model_validator(mode="after")
@@ -107,8 +120,16 @@ class GuidePlan(BaseModel):
             PlannedResponseMode.CLARIFY,
             PlannedResponseMode.CLARIFY_WITH_SUGGESTION,
         }
-        if asks and (not self.clarification_needed or not self.clarification_question):
-            raise ValueError("clarification modes require one clarification question")
+        if asks and not self.clarification_needed:
+            raise ValueError("clarification modes require clarification_needed")
+        if asks and not self.clarification_target:
+            raise ValueError("clarification modes require clarification_target")
+        if asks and not self.clarification_requires_retrieval and not self.clarification_question:
+            raise ValueError("non-retrieval clarification requires one clarification question")
+        if self.clarification_requires_retrieval and not self.clarification_option_goal:
+            raise ValueError("retrieval-backed clarification requires clarification_option_goal")
+        if self.clarification_requires_retrieval and not asks:
+            raise ValueError("clarification_requires_retrieval is valid only for clarification modes")
         if asks and self.clarification_strategy not in {
             ClarificationStrategy.ASK_REQUIRED,
             ClarificationStrategy.ASK_OPTIONAL,
@@ -155,6 +176,30 @@ CLARIFICATION POLICY
   would improve the result. Set can_offer_partial_answer=true.
 - Use clarify only when no safe progress can be made.
 - Ask exactly one concise, high-information question.
+
+PENDING CLARIFICATION
+- If dialogue_state.pending_clarification exists, first classify what the current user turn did to
+  it with pending_clarification_resolution: answered, partially_answered, rejected, or topic_changed.
+  Use none only when there was no pending clarification or the current turn did not resolve it.
+- A short reply may be an answer to the previous question, not a new unrelated enquiry. Merge useful
+  facts into active_constraints. If partially answered, retain what was learned and identify only the
+  highest-value remaining gap. If rejected, do not repeat the same forced choice. If the topic changed,
+  abandon the irrelevant gap and plan for the new enquiry.
+- clarification_target names the flexible information gap, such as learning_goal, experience_level,
+  schedule, comparison_target, or course_reference. Do not turn targets into a closed enum.
+- After two consecutive attempts at the same target, do not plan another forced-choice clarification.
+  Give the best grounded progress possible or change to a genuinely open-ended strategy.
+
+GROUND BEFORE SUGGESTING
+- You have no course tools. Never invent user-visible course choices, course names, course IDs,
+  catalogue availability, or learning directions presented as offerings in this catalogue.
+- Plan the information gap, not catalogue-backed option labels. When useful choices must come from
+  the catalogue, set clarification_requires_retrieval=true and describe only their semantic purpose
+  in clarification_option_goal. Agent 2 will retrieve and construct the actual grounded question.
+- For retrieval-backed clarification, clarification_question may be null. Do not pre-write choices
+  such as Machine Learning versus Generative AI unless trusted structured state already grounds them.
+- A generic question about the user, such as what work they want help with or their experience level,
+  is safe without retrieval; set clarification_requires_retrieval=false and provide that one question.
 
 BEHAVIOR
 - recommend_one selects one primary course and stays brief.
@@ -266,12 +311,45 @@ def template_agent(state: GraphState) -> dict:
     conversation = state.get("conversation", []) or []
     prior = DialogueState.model_validate(state.get("dialogue_state", {}) or {})
     plan = _model_plan(query, conversation, prior)
+    prior_pending = prior.pending_clarification
+    repeats_exhausted_target = (
+        prior_pending is not None
+        and prior_pending.attempt >= 2
+        and plan["pending_clarification_resolution"] not in {"answered", "topic_changed"}
+        and plan["planned_response_mode"] in {"clarify", "clarify_with_suggestion"}
+        and plan.get("clarification_target") == prior_pending.target
+    )
+    plan["clarification_limit_reached"] = repeats_exhausted_target
+    if repeats_exhausted_target:
+        plan["planned_response_mode"] = {
+            "recommend_course": "recommend_one",
+            "recommend_with_details": "recommend_one_with_details",
+            "compare_courses": "compare",
+            "explore_direction": "explore",
+            "free_style": "course_info",
+        }[plan["intent_family"]]
+        plan["clarification_needed"] = False
+        plan["clarification_strategy"] = "none"
+        plan["clarification_question"] = None
+        plan["clarification_requires_retrieval"] = False
+        plan["clarification_option_goal"] = None
+        plan["can_offer_partial_answer"] = False
+        plan["answer_instruction"] = (
+            f"{plan['answer_instruction']} Do not ask the same clarification again; provide the "
+            "best grounded result possible and use no_result if evidence is insufficient."
+        )
     dialogue = merge_dialogue_state(
         prior,
         resolved_course_ids=plan["resolved_course_ids"],
         active_constraints=plan["active_constraints"],
         unresolved_references=plan["unresolved_references"],
         current_goal=plan["semantic_intent"],
+        clear_pending_clarification=plan["pending_clarification_resolution"] in {
+            "answered", "topic_changed"
+        },
+        reset_clarification_count=plan["pending_clarification_resolution"] in {
+            "answered", "topic_changed"
+        },
     )
     plan["resolved_course_ids"] = dialogue.resolved_course_ids
     plan["active_constraints"] = dialogue.active_constraints

@@ -116,6 +116,149 @@
       "expected_intent_family": "free_style",
       "expected_response_mode": "course_info",
       "expected_behavior": "Replace the prior beginner constraint with intermediate; do not preserve both."
+    },
+    {
+      "conversation": [],
+      "dialogue_state": null,
+      "query": "ผมอยากเรียน AI เอาไปใช้ทำงาน แต่ยังไม่รู้ว่าจะเรียนอะไร",
+      "expected_intent_family": "explore_direction",
+      "expected_response_mode": "clarify",
+      "expected_clarification_target": "learning_goal",
+      "expected_clarification_requires_retrieval": false,
+      "expected_behavior": "Ask one generic user-focused question about the work goal without implying that a catalogue direction exists."
+    },
+    {
+      "conversation": [],
+      "dialogue_state": null,
+      "query": "อยากเรียน AI แต่ยังไม่รู้ว่าจะไปทางไหนดี",
+      "expected_intent_family": "explore_direction",
+      "expected_response_mode": "clarify_with_suggestion",
+      "expected_clarification_target": "learning_direction",
+      "expected_clarification_requires_retrieval": true,
+      "expected_clarification_option_goal": "Find a small number of materially different beginner-friendly AI directions represented by real catalogue courses.",
+      "expected_behavior": "Agent 1 describes the information gap rather than inventing options; Agent 2 retrieves the catalogue before constructing visible choices."
+    },
+    {
+      "conversation": [
+        {"role": "assistant", "content": "คุณอยากเอา AI ไปใช้กับงานแบบไหน?"}
+      ],
+      "dialogue_state": {
+        "active_constraints": {"topic": "AI", "goal": "use_for_work"},
+        "pending_clarification": {
+          "target": "preferred_use_case",
+          "question": "คุณอยากเอา AI ไปใช้กับงานแบบไหน?",
+          "options": [],
+          "supporting_course_ids": [],
+          "retrieval_required": false,
+          "attempt": 1
+        },
+        "clarification_count": 1
+      },
+      "query": "ทำ content",
+      "expected_intent_family": "recommend_course",
+      "expected_pending_clarification_resolution": "answered",
+      "expected_state_update": {"preferred_use_case": "content_generation"},
+      "expected_behavior": "Interpret the short message as the answer to the visible pending question, preserve prior constraints, and clear or advance the pending clarification."
+    },
+    {
+      "conversation": [
+        {"role": "assistant", "content": "คุณอยากเรียนเพื่อเปลี่ยนสายงานหรือใช้เสริมงานปัจจุบัน?"}
+      ],
+      "dialogue_state": {
+        "active_constraints": {"topic": "technology"},
+        "pending_clarification": {
+          "target": "learning_goal",
+          "question": "คุณอยากเรียนเพื่อเปลี่ยนสายงานหรือใช้เสริมงานปัจจุบัน?",
+          "options": [],
+          "supporting_course_ids": [],
+          "retrieval_required": false,
+          "attempt": 1
+        },
+        "clarification_count": 1
+      },
+      "query": "เอาไปใช้กับงาน แต่ยังไม่แน่ใจว่าจะใช้ด้านไหน",
+      "expected_intent_family": "explore_direction",
+      "expected_response_mode": "clarify",
+      "expected_pending_clarification_resolution": "partially_answered",
+      "expected_behavior": "Preserve the learned work-use goal and ask one narrower, differently worded question about only the remaining gap."
+    },
+    {
+      "conversation": [
+        {"role": "assistant", "content": "คุณอยากใช้ AI กับงานลักษณะไหนมากที่สุด?"}
+      ],
+      "dialogue_state": {
+        "active_constraints": {"topic": "AI"},
+        "pending_clarification": {
+          "target": "preferred_use_case",
+          "question": "คุณอยากใช้ AI กับงานลักษณะไหนมากที่สุด?",
+          "options": [],
+          "supporting_course_ids": [],
+          "retrieval_required": false,
+          "attempt": 1
+        },
+        "clarification_count": 1
+      },
+      "query": "ไม่รู้เหมือนกัน",
+      "expected_intent_family": "explore_direction",
+      "expected_pending_clarification_resolution": "rejected",
+      "expected_behavior": "Do not repeat the same question; use profile or catalogue evidence, change dimension, or make bounded grounded progress."
+    },
+    {
+      "conversation": [
+        {"role": "assistant", "content": "คุณสนใจเส้นทาง AI แบบไหน?"}
+      ],
+      "dialogue_state": {
+        "active_constraints": {"topic": "AI"},
+        "pending_clarification": {
+          "target": "learning_direction",
+          "question": "คุณสนใจเส้นทาง AI แบบไหน?",
+          "options": [],
+          "supporting_course_ids": [],
+          "retrieval_required": false,
+          "attempt": 1
+        },
+        "clarification_count": 1
+      },
+      "query": "จริง ๆ ขอถามราคา CS101 ก่อน",
+      "expected_intent_family": "free_style",
+      "expected_response_mode": "course_info",
+      "expected_pending_clarification_resolution": "topic_changed",
+      "expected_behavior": "Abandon the pending AI gap, retrieve CS101, and answer the new factual enquiry."
+    },
+    {
+      "conversation": [
+        {"role": "user", "content": "ช่วยเลือกคอร์ส Machine Learning ให้หนึ่งคอร์ส"},
+        {"role": "assistant", "content": "ผมแนะนำ AI201"}
+      ],
+      "dialogue_state": {
+        "resolved_course_ids": ["AI201"],
+        "last_primary_course_id": "AI201",
+        "last_related_course_ids": [],
+        "active_constraints": {"topic": "Machine Learning"}
+      },
+      "query": "แล้วคอร์สนี้ยากไหม",
+      "expected_intent_family": "free_style",
+      "expected_response_mode": "course_info",
+      "expected_behavior": "Resolve the pronoun to AI201, retrieve that exact course, and do not ask an unnecessary clarification."
+    },
+    {
+      "conversation": [],
+      "dialogue_state": null,
+      "query": "ช่วยยกตัวเลือกเส้นทาง AI จากคอร์สที่มีเพื่อให้ผมเลือก",
+      "expected_intent_family": "explore_direction",
+      "expected_response_mode": "clarify_with_suggestion",
+      "expected_clarification_requires_retrieval": true,
+      "expected_clarification_option_goal": "Find a small number of useful AI directions that are actually represented by retrieved catalogue courses and can distinguish the user's goal.",
+      "expected_behavior": "Retrieve first, attach real evidence IDs to every visible catalogue-backed option, and expose only evidence-backed related cards."
+    },
+    {
+      "conversation": [],
+      "dialogue_state": null,
+      "query": "จากพื้นฐานที่ระบบมี ผมควรเรียนอะไรต่อดี",
+      "expected_intent_family": "recommend_course",
+      "expected_response_mode": "recommend_one",
+      "expected_personal_data_needed": true,
+      "expected_behavior": "Use relevant personal evidence to reduce uncertainty and avoid asking for background already present in the profile; retrieve catalogue evidence before recommending."
     }
   ]
 }

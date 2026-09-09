@@ -4,10 +4,27 @@ import operator
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 AgentMessage = HumanMessage | SystemMessage | ToolMessage | AIMessage
+
+
+class PendingClarification(BaseModel):
+    """The actual clarification question most recently shown to the user."""
+
+    target: str = Field(min_length=1)
+    reason: str | None = None
+    question: str = Field(min_length=1)
+    options: list[str] = Field(default_factory=list)
+    supporting_course_ids: list[str] = Field(default_factory=list)
+    retrieval_required: bool = False
+    attempt: int = Field(default=1, ge=1)
+
+    @field_validator("supporting_course_ids")
+    @classmethod
+    def normalize_supporting_course_ids(cls, values: list[str]) -> list[str]:
+        return normalize_course_ids(values)
 
 
 class DialogueState(BaseModel):
@@ -19,6 +36,10 @@ class DialogueState(BaseModel):
     active_constraints: dict[str, Any] = Field(default_factory=dict)
     unresolved_references: list[str] = Field(default_factory=list)
     current_goal: str | None = None
+    pending_clarification: PendingClarification | None = None
+    clarification_count: int = Field(default=0, ge=0)
+    last_intent_family: str | None = None
+    last_response_mode: str | None = None
 
 
 def normalize_course_ids(values: list[str] | None) -> list[str]:
@@ -39,6 +60,12 @@ def merge_dialogue_state(
     current_goal: str | None = None,
     primary_course_id: str | None = None,
     related_course_ids: list[str] | None = None,
+    pending_clarification: PendingClarification | dict[str, Any] | None = None,
+    clear_pending_clarification: bool = False,
+    clarification_asked: bool = False,
+    reset_clarification_count: bool = False,
+    last_intent_family: str | None = None,
+    last_response_mode: str | None = None,
 ) -> DialogueState:
     """Merge a model-resolved turn into prior state without interpreting semantics."""
     prior = previous if isinstance(previous, DialogueState) else DialogueState.model_validate(previous or {})
@@ -56,6 +83,18 @@ def merge_dialogue_state(
     for course_id in related:
         if course_id not in resolved:
             resolved.append(course_id)
+    pending = prior.pending_clarification
+    if clear_pending_clarification:
+        pending = None
+    elif pending_clarification is not None:
+        pending = (
+            pending_clarification
+            if isinstance(pending_clarification, PendingClarification)
+            else PendingClarification.model_validate(pending_clarification)
+        )
+    clarification_count = 0 if reset_clarification_count else prior.clarification_count
+    if clarification_asked:
+        clarification_count += 1
     return DialogueState(
         resolved_course_ids=resolved,
         last_primary_course_id=primary,
@@ -67,6 +106,14 @@ def merge_dialogue_state(
             else prior.unresolved_references
         ),
         current_goal=current_goal if current_goal is not None else prior.current_goal,
+        pending_clarification=pending,
+        clarification_count=clarification_count,
+        last_intent_family=(
+            last_intent_family if last_intent_family is not None else prior.last_intent_family
+        ),
+        last_response_mode=(
+            last_response_mode if last_response_mode is not None else prior.last_response_mode
+        ),
     )
 
 
@@ -80,6 +127,10 @@ class GraphState(TypedDict, total=False):
     resolved_course_ids: list[str]
     active_constraints: dict[str, Any]
     unresolved_references: list[str]
+    pending_clarification: dict[str, Any] | None
+    clarification_count: int
+    last_intent_family: str | None
+    last_response_mode: str | None
     guide_agent_state_memory: Annotated[list[AgentMessage], operator.add]
     search_agent_state_memory: Annotated[list[AgentMessage], operator.add]
     retrieved_context_raw: list[dict[str, Any]]
