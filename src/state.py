@@ -19,4 +19,8 @@ class GraphState(TypedDict, total=False):
     retrieved_context_raw: list[dict[str, Any]]
     search_attempts: int
     max_search_attempts: int
+    tool_call_count: int
+    max_tool_calls: int
+    tool_call_artifacts: Annotated[list[dict[str, Any]], operator.add]
+    tool_call_limit_error: str
     final_answer: str

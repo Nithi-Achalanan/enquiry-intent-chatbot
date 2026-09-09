@@ -15,6 +15,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from src.graph import graph
 from src.main import extract_related_courses
+from src.reliability import ModelInvocationError
 
 
 OUTPUT_DIR = ROOT / "test_results"
@@ -70,7 +71,10 @@ def invoke(query: str, conversation: list[str]) -> dict[str, Any]:
         "search_agent_state_memory": [],
         "retrieved_context_raw": [],
         "search_attempts": 0,
-        "max_search_attempts": 4,
+        "max_search_attempts": 5,
+        "tool_call_count": 0,
+        "max_tool_calls": 5,
+        "tool_call_artifacts": [],
     })
     raw_context = state.get("retrieved_context_raw", [])
     return {
@@ -79,6 +83,8 @@ def invoke(query: str, conversation: list[str]) -> dict[str, Any]:
         "retrieved_context_raw": raw_context,
         "search_attempts": state.get("search_attempts", 0),
         "max_search_attempts": state.get("max_search_attempts", 4),
+        "tool_call_artifacts": state.get("tool_call_artifacts", []),
+        "tool_call_limit_error": state.get("tool_call_limit_error"),
         "final_answer": state.get("final_answer", ""),
         "related_courses": extract_related_courses(raw_context),
     }
@@ -94,6 +100,9 @@ def run() -> list[dict[str, Any]]:
                 observed = invoke(query, conversation)
                 turns.append({"query": query, "conversation_before": conversation.copy(), "observed": observed})
                 conversation.extend((f"user: {query}", f"assistant: {observed['final_answer']}"))
+            except ModelInvocationError as error:
+                turns.append({"query": query, "conversation_before": conversation.copy(), "error": str(error), "diagnostic": error.artifact()})
+                break
             except Exception as exc:
                 turns.append({"query": query, "conversation_before": conversation.copy(), "error": f"{type(exc).__name__}: {exc}"})
                 break
@@ -144,6 +153,8 @@ def render(results: list[dict[str, Any]]) -> str:
             lines.extend(("", "**User Query:**", f"> {turn['query']}", ""))
             if "error" in turn:
                 lines.extend(("**Error:**", f"- {turn['error']}", ""))
+                if turn.get("diagnostic"):
+                    lines.extend((f"**Diagnostic:** `{json.dumps(turn['diagnostic'], ensure_ascii=False)}`", ""))
                 continue
             observed = turn["observed"]
             plan = observed["plan"]
@@ -163,6 +174,9 @@ def render(results: list[dict[str, Any]]) -> str:
             if observed["search_attempts"] >= observed["max_search_attempts"]:
                 limit_hits += 1
             lines.extend(("", f"**Search attempts:** {observed['search_attempts']}/{observed['max_search_attempts']}", ""))
+            lines.extend((f"**Tool-call artifacts:** `{json.dumps(observed['tool_call_artifacts'], ensure_ascii=False)}`", ""))
+            if observed["tool_call_limit_error"]:
+                lines.extend((f"**Tool-call limit error:** {observed['tool_call_limit_error']}", ""))
         lines.extend(("### Result", "", status, "", "### Notes", "", note, ""))
         bodies.extend(lines)
     sections.extend(("| Metric | Result |", "|---|---:|", "| จำนวน Scenario | 15 |", f"| Pass (execution) | {status_counts['PASS']} |", f"| Partial (execution) | {status_counts['PARTIAL']} |", f"| Fail (execution) | {status_counts['FAIL']} |", f"| Related Course Validation | {valid_related}/{total_related} unique IDs |", f"| Search-limit hits | {limit_hits} |", "", "ผล PASS/PARTIAL/FAIL ด้านบนเป็นสถานะการรันจริง ไม่ใช่การอ้างว่าทุก expected behavior ถูกต้อง; รายละเอียด observable artifacts ของแต่ละ scenario อยู่ด้านล่าง.", ""))

@@ -1,6 +1,6 @@
 """Search-and-answer agent for the existing retrieval subgraph.
 
-Agent 2 does not use Python keyword rules to decide what to retrieve or how to
+Agent 2 does not use deterministic rules to decide what to retrieve or how to
 answer. It receives Agent 1's guide plan, lets the LLM decide which available
 tool to call next, reviews tool results from the existing graph state, and
 returns a grounded final answer when enough evidence has been collected.
@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_groq import ChatGroq
 
 from src.config import get_model_configuration
+from src.reliability import invoke_with_retry
 from src.state import GraphState
 
 
@@ -30,22 +31,17 @@ YOUR RESPONSIBILITY
 - Decide which available retrieval tool, if any, should be called next.
 - Inspect previous tool results before deciding whether more retrieval is needed.
 - When enough evidence is available, answer the user directly in Thai.
-- Ground every factual statement about courses or personal data in retrieved tool results.
+- Ground every factual statement about courses in retrieved tool results.
 
 AVAILABLE TOOLS
 
-1. personal_data
-Use when the answer genuinely depends on the user's own profile, skills, interests,
-learning goals, preferences, enrolled/completed courses, or personal suitability.
-Do not call it just because personal data exists.
+1. course_catalog
+Use to inspect the complete current course catalogue when choosing, comparing, filtering, or
+discovering courses. You—not Python ranking rules—must decide which courses are relevant from
+their course name, detailed description, category, level, target audience, prerequisites, and
+the user's full context.
 
-2. keyword_search
-Use to discover/rank courses by topic, goal, category, schedule, level, skill, or other
-searchable concepts when an exact course ID is not sufficient.
-Generate concise search keywords from the semantic meaning of the query, conversation,
-and Agent 1's plan. Do not rely on a fixed keyword mapping.
-
-3. course_id
+2. course_id
 Use when an exact course ID is known from the user, conversation, Agent 1's plan, or a
 previous retrieval result and exact/full course information is needed.
 Never invent a course ID.
@@ -56,22 +52,16 @@ TOOL-CALL POLICY
 - Before calling a tool, inspect previous ToolMessages so you do not repeat the same call
   without a useful reason.
 - Do not call tools merely to fill the search budget.
-- If a previous keyword search identifies a relevant course and exact details are needed,
-  you may call course_id on the next invocation.
+- Do not use query-token extraction, fuzzy matching, fixed mappings, or precomputed rankings.
+  Make the relevance and recommendation decisions yourself.
 - If the question can be safely answered from evidence already retrieved, stop calling tools.
 - If Agent 1 says clarification is needed and retrieval cannot resolve the ambiguity, ask
   the clarification question instead of guessing.
 
 ANSWER POLICY
 - Follow Agent 1's selected intent, answer_instruction, and answer_template.
-- intent_1: recommend ONE primary course and explain briefly why it fits.
-- intent_2: recommend ONE primary course and include useful requested/decision-relevant details.
-- intent_3: compare the requested courses on meaningful common dimensions; if the user asks
-  which is better for them, use personal data when needed and give a grounded conclusion.
-- intent_4: help narrow the learning direction; ask one focused clarification if evidence is
-  insufficient, otherwise provide a useful path based on retrieved evidence.
-- intent_5: answer the specific factual/filter/follow-up/edge-case enquiry directly without
-  forcing it into recommendation or comparison format.
+- Use the guide plan's model-decided intent and answer instruction. Choose the response format
+  that best serves the current request rather than forcing it into a predefined category.
 
 GROUNDING AND SAFETY
 - Retrieved local data is the source of truth.
@@ -92,42 +82,11 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "personal_data",
-            "description": (
-                "Retrieve the mock user's personal learning profile, including skills, "
-                "interests, goals, preferences, and course history. Use only when personal "
-                "context is relevant to the answer."
-            ),
+            "name": "course_catalog",
+            "description": "Retrieve the complete course catalogue, including detailed descriptions, target audience, prerequisites, schedule, and price. Decide relevance yourself from those factual fields; no server-side ranking or filtering is applied.",
             "parameters": {
                 "type": "object",
                 "properties": {},
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "keyword_search",
-            "description": (
-                "Search and rank courses in the local course catalogue using semantic search "
-                "keywords chosen from the user's enquiry and conversation context."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "keywords": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "minItems": 1,
-                        "maxItems": 6,
-                        "description": (
-                            "Concise search concepts. Prefer meaningful course/topic/constraint "
-                            "phrases; do not include filler words."
-                        ),
-                    }
-                },
-                "required": ["keywords"],
                 "additionalProperties": False,
             },
         },
@@ -164,6 +123,8 @@ def _get_models():
         model=configuration.model,
         temperature=0,
         api_key=configuration.api_key,
+        timeout=(5.0, configuration.timeout_seconds),
+        max_retries=0,
     )
     return llm, llm.bind_tools(TOOL_SCHEMAS), configuration.model
 
@@ -179,18 +140,12 @@ def _guide_plan(state: GraphState) -> dict[str, Any]:
         except (json.JSONDecodeError, TypeError):
             continue
 
-        if isinstance(plan, dict) and plan.get("intent") in {
-            "intent_1",
-            "intent_2",
-            "intent_3",
-            "intent_4",
-            "intent_5",
-        }:
+        if isinstance(plan, dict) and isinstance(plan.get("intent"), str) and plan["intent"].strip():
             return plan
 
     raise ValueError(
         "Search Agent requires a valid structured guide plan from Agent 1. "
-        "Do not silently replace the guide plan with keyword heuristics."
+        "Do not silently replace the guide plan with deterministic heuristics."
     )
 
 
@@ -282,7 +237,11 @@ def _final_without_more_tools(
             )
         )
     )
-    response = llm.invoke(messages)
+    response = invoke_with_retry(
+        lambda: llm.invoke(messages),
+        agent="search_agent",
+        max_retries=get_model_configuration().retry_attempts,
+    )
     return AIMessage(content=str(response.content))
 
 
@@ -293,26 +252,13 @@ def search_agent(state: GraphState) -> dict:
         raise ValueError("Search Agent requires a non-empty query.")
 
     plan = _guide_plan(state)
-    search_attempts = state.get("search_attempts", 0)
-    max_search_attempts = state.get("max_search_attempts", 4)
-
-    if search_attempts >= max_search_attempts:
-        response = _final_without_more_tools(
-            state,
-            plan,
-            reason=f"the search-attempt limit ({max_search_attempts}) has been reached",
-        )
-        return {
-            "search_agent_state_memory": [response],
-            "final_answer": str(response.content),
-        }
-
     _, tool_llm, _ = _get_models()
 
-    try:
-        response = tool_llm.invoke(_agent_messages(state, plan))
-    except Exception as exc:
-        raise RuntimeError("Search & Answer Agent model invocation failed.") from exc
+    response = invoke_with_retry(
+        lambda: tool_llm.invoke(_agent_messages(state, plan)),
+        agent="search_agent",
+        max_retries=get_model_configuration().retry_attempts,
+    )
 
     if not isinstance(response, AIMessage):
         response = AIMessage(content=str(response.content))

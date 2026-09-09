@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from src.graph import graph
+from src.reliability import ModelInvocationError
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,6 @@ class RelatedCourse(BaseModel):
     duration: str | None = None
     schedule: str | None = None
     price: float | None = None
-    score: float | None = None
 
 
 class ChatResponse(BaseModel):
@@ -68,14 +68,6 @@ def _rank(item: dict[str, Any]) -> int:
         return int(item.get("rank", 999))
     except (TypeError, ValueError):
         return 999
-
-
-def _score(item: dict[str, Any]) -> float | None:
-    value = item.get("score")
-    try:
-        return float(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
 
 
 def extract_related_courses(retrieved_context_raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -101,7 +93,7 @@ def extract_related_courses(retrieved_context_raw: list[dict[str, Any]]) -> list
         course = catalog.get(course_id)
         if not course or course_id in seen:
             continue
-        related_courses.append({**course, "score": _score(artifact)})
+        related_courses.append(course)
         seen.add(course_id)
     return related_courses
 
@@ -120,9 +112,14 @@ def run_chatbot(query: str, conversation: list[str] | None = None) -> dict[str, 
         "search_agent_state_memory": [],
         "retrieved_context_raw": [],
         "search_attempts": 0,
-        "max_search_attempts": 4,
+        "max_search_attempts": 5,
+        "tool_call_count": 0,
+        "max_tool_calls": 5,
+        "tool_call_artifacts": [],
     }
     result = graph.invoke(initial_state)
+    if result.get("tool_call_limit_error"):
+        raise RuntimeError(result["tool_call_limit_error"])
     return {
         "answer": result.get("final_answer", "ไม่สามารถสร้างคำตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้งครับ"),
         "related_courses": extract_related_courses(result.get("retrieved_context_raw", [])),
@@ -151,6 +148,18 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     try:
         result = await run_in_threadpool(run_chatbot, query, adapt_conversation(request.conversation))
+    except ModelInvocationError as error:
+        logger.warning("chat_model_unavailable diagnostic=%s", error.artifact())
+        if not error.diagnostic.retryable:
+            raise HTTPException(
+                status_code=502,
+                detail="ระบบ AI ไม่สามารถประมวลผลคำขอได้ในขณะนี้",
+            ) from None
+        raise HTTPException(
+            status_code=503,
+            detail="ระบบ AI กำลังไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้ง",
+            headers={"Retry-After": "2"},
+        ) from None
     except Exception:
         logger.exception("Chat graph execution failed")
         raise HTTPException(status_code=500, detail="Unable to process the enquiry.") from None

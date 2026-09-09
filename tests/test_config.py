@@ -48,6 +48,22 @@ class ModelConfigurationTests(unittest.TestCase):
 
         self.assertEqual(configuration.model, "openai/gpt-oss-20b")
 
+    def test_timeout_and_retry_settings_are_configurable(self) -> None:
+        with patch.dict(
+            os.environ,
+            self._environment(
+                GROQ_API_KEY="test-key",
+                GROQ_MODEL="openai/gpt-oss-20b",
+                GROQ_TIMEOUT_SECONDS="12.5",
+                GROQ_RETRY_ATTEMPTS="1",
+            ),
+            clear=True,
+        ):
+            configuration = get_model_configuration()
+
+        self.assertEqual(configuration.timeout_seconds, 12.5)
+        self.assertEqual(configuration.retry_attempts, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
