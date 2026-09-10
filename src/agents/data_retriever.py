@@ -157,10 +157,10 @@ def _get_models():
     configuration = get_model_configuration()
     llm = ChatOpenAI(
         model=configuration.model,
-        temperature=0,
         api_key=configuration.api_key,
         timeout=configuration.timeout_seconds,
         max_retries=0,
+        use_responses_api=True,
     )
     return (
         llm,
