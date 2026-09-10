@@ -9,7 +9,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from src.config import get_model_configuration
 from src.reliability import invoke_with_retry
@@ -159,6 +159,12 @@ SEMANTIC CONTRACT
   semantic classification rules.
 - planned_response_mode controls this turn: recommend_one, recommend_one_with_details, compare,
   course_info, explore, clarify, clarify_with_suggestion, or refuse.
+- Use only these intent_family and planned_response_mode pairs:
+  - recommend_course: recommend_one, clarify, clarify_with_suggestion
+  - recommend_with_details: recommend_one_with_details, clarify, clarify_with_suggestion
+  - compare_courses: compare, clarify, clarify_with_suggestion
+  - explore_direction: explore, clarify, clarify_with_suggestion
+  - free_style: course_info, clarify, clarify_with_suggestion, refuse
 
 RESOLUTION ORDER
 Before asking, determine whether ambiguity can be resolved from conversation history, structured
@@ -327,12 +333,15 @@ def _model_plan(
             f"Current user query:\n{query}"
         )),
     ]
-    response = invoke_with_retry(
-        lambda: structured_llm.invoke(messages),
+    def invoke_and_parse() -> GuidePlan:
+        return _parse_guide_response(structured_llm.invoke(messages))
+
+    plan = invoke_with_retry(
+        invoke_and_parse,
         agent="guide_agent",
         max_retries=get_model_configuration().retry_attempts,
+        retryable_errors=(ValidationError,),
     )
-    plan = _parse_guide_response(response)
     value = plan.model_dump(mode="json")
     value["model_used"] = model_name
     return value

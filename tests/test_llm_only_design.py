@@ -150,6 +150,34 @@ class LlmOnlyDesignTests(unittest.TestCase):
         self.assertEqual(parsed.final_response_mode, FinalResponseMode.COURSE_INFO)
         self.assertEqual(parsed.answer, "คำตอบ")
 
+    def test_guide_plan_retries_an_invalid_mode_contract(self):
+        invalid = guide_plan(intent_family="explore_direction", planned_response_mode="recommend_one")
+        valid = guide_plan(intent_family="explore_direction", planned_response_mode="explore")
+        raw_messages = [
+            AIMessage(content="", tool_calls=[{"name": "functions.GuidePlan", "args": invalid, "id": "call-invalid"}]),
+            AIMessage(content="", tool_calls=[{"name": "functions.GuidePlan", "args": valid, "id": "call-valid"}]),
+        ]
+
+        class StructuredModel:
+            def __init__(self):
+                self.responses = iter(raw_messages)
+                self.calls = 0
+
+            def invoke(self, messages):
+                self.calls += 1
+                return {"raw": next(self.responses), "parsed": None}
+
+        model = StructuredModel()
+        with patch("src.agents.template_design._get_guide_model", return_value=(model, "test-model")), patch(
+            "src.agents.template_design.get_model_configuration"
+        ) as configuration:
+            configuration.return_value.retry_attempts = 1
+            plan = template_design._model_plan("ช่วยแนะนำแนวทางเรียน", [])
+
+        self.assertEqual(model.calls, 2)
+        self.assertEqual(plan["intent_family"], "explore_direction")
+        self.assertEqual(plan["planned_response_mode"], "explore")
+
     def test_personal_data_tool_reads_authoritative_mock_profile(self):
         profile = load_personal_data()
         self.assertEqual(profile["user_id"], "USER-001")

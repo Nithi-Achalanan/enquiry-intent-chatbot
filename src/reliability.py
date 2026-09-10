@@ -80,13 +80,14 @@ def invoke_with_retry(
     *,
     agent: str,
     max_retries: int,
+    retryable_errors: tuple[type[Exception], ...] = (),
     base_delay_seconds: float = 0.25,
 ) -> Result:
     for attempt in range(1, max_retries + 2):
         try:
             return operation()
         except Exception as error:
-            retryable = is_retryable_model_error(error)
+            retryable = isinstance(error, retryable_errors) or is_retryable_model_error(error)
             diagnostic = InvocationDiagnostic(
                 agent=agent,
                 attempts=attempt,

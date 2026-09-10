@@ -626,6 +626,9 @@ Agent 2 retrieves `course_catalog` before it can finalize that catalogue-backed 
 
 Agent 1 passes a structured plan directly through graph state.
 
+If the model returns a plan that fails this contract, the guide agent retries the structured
+model call within its configured retry limit before returning a sanitized model error.
+
 | Field | Purpose |
 | --- | --- |
 | `semantic_intent` | Flexible natural-language description of what the user currently wants. |
