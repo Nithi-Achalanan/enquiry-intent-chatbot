@@ -1,5 +1,7 @@
 # Enquiry Intent Chatbot
 
+The chat interface keeps long conversations scrollable in the message pane, renders assistant replies with safe Markdown formatting, clamps related-course descriptions to two lines, and includes a Reset chat button that clears the current browser session.
+
 This repository was created entirely by **Nithi Achalanan** individually.
 
 A two-agent conversational course-enquiry system built with **LangGraph**, **LangChain**, **OpenAI**, and **FastAPI**.
