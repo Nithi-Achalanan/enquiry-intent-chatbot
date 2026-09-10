@@ -145,4 +145,4 @@ class ReliabilityTests(unittest.TestCase):
         turn = results[0]["turns"][0]
 
         self.assertEqual(turn["diagnostic"]["attempts"], 3)
-        self.assertNotIn("GROQ_API_KEY", evaluation.render(results))
+        self.assertNotIn("API_KEY", evaluation.render(results))
