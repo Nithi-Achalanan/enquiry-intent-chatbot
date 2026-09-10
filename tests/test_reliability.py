@@ -14,14 +14,136 @@ class HttpError(Exception):
 
 
 class ReliabilityTests(unittest.TestCase):
+    def test_compare_retrieval_flag_does_not_require_clarification_options(self) -> None:
+        observed = {
+            "plan": {"clarification_requires_retrieval": True},
+            "final_response_mode": "compare",
+            "final_result": {"clarification_options": []},
+            "retrieved_context_raw": [],
+        }
+
+        self.assertEqual(evaluation._clarification_option_score(observed), evaluation.NA)
+
     def test_evaluation_fails_missing_required_clarification_options(self) -> None:
         observed = {
             "plan": {"clarification_requires_retrieval": True},
+            "final_response_mode": "clarify_with_suggestion",
             "final_result": {"clarification_options": []},
             "retrieved_context_raw": [],
         }
 
         self.assertEqual(evaluation._clarification_option_score(observed), evaluation.FAIL)
+
+    def test_intent_evolution_allows_recommendation_after_clarification_answer(self) -> None:
+        turn = {
+            "expected": evaluation.expected(
+                ["explore_direction", "recommend_course"],
+                ["recommend_one"],
+            ),
+            "observed": {
+                "plan": {"intent_family": "recommend_course"},
+                "final_result": {
+                    "final_response_mode": "recommend_one",
+                    "primary_course_id": "AI101",
+                    "referenced_course_ids": ["AI101"],
+                    "related_course_ids": ["AI101"],
+                    "evidence_course_ids": ["AI101"],
+                },
+                "final_response_mode": "recommend_one",
+                "final_answer": "แนะนำคอร์ส AI101 ครับ",
+                "grounding_status": "grounded",
+                "retrieved_context_raw": [{
+                    "tool_name": "course_id",
+                    "course": {"course_id": "AI101"},
+                }],
+                "related_courses": [{"course_id": "AI101"}],
+                "dialogue_state": {},
+            },
+        }
+
+        self.assertEqual(evaluation.score_turn(turn)["intent_family"], evaluation.PASS)
+
+    def test_recommendation_requires_primary_related_card(self) -> None:
+        turn = {
+            "expected": evaluation.expected("recommend_course", ["recommend_one"], related="nonempty"),
+            "observed": {
+                "plan": {"intent_family": "recommend_course"},
+                "final_result": {
+                    "final_response_mode": "recommend_one",
+                    "primary_course_id": "AI201",
+                    "referenced_course_ids": ["AI201"],
+                    "related_course_ids": ["AI101"],
+                    "evidence_course_ids": ["AI101", "AI201"],
+                },
+                "final_response_mode": "recommend_one",
+                "final_answer": "แนะนำ AI201 ครับ",
+                "grounding_status": "grounded",
+                "retrieved_context_raw": [{"courses": [{"course_id": "AI101"}, {"course_id": "AI201"}]}],
+                "related_courses": [{"course_id": "AI101"}],
+                "dialogue_state": {},
+            },
+        }
+
+        self.assertEqual(evaluation.score_turn(turn)["related_courses"], evaluation.FAIL)
+
+    def test_compare_requires_two_compared_course_cards(self) -> None:
+        turn = {
+            "expected": evaluation.expected("compare_courses", ["compare"], related="nonempty"),
+            "observed": {
+                "plan": {"intent_family": "compare_courses"},
+                "final_result": {
+                    "final_response_mode": "compare",
+                    "referenced_course_ids": ["AI101", "AI201"],
+                    "related_course_ids": ["AI101"],
+                    "evidence_course_ids": ["AI101", "AI201"],
+                },
+                "final_response_mode": "compare",
+                "final_answer": "เปรียบเทียบ AI101 กับ AI201 ครับ",
+                "grounding_status": "grounded",
+                "retrieved_context_raw": [{"courses": [{"course_id": "AI101"}, {"course_id": "AI201"}]}],
+                "related_courses": [{"course_id": "AI101"}],
+                "dialogue_state": {},
+            },
+        }
+
+        self.assertEqual(evaluation.score_turn(turn)["related_courses"], evaluation.FAIL)
+
+    def test_no_result_cannot_retain_a_selected_course(self) -> None:
+        turn = {
+            "expected": evaluation.expected("free_style", ["no_result"], related="empty"),
+            "observed": {
+                "plan": {"intent_family": "free_style"},
+                "final_result": {
+                    "final_response_mode": "no_result",
+                    "referenced_course_ids": ["AI101"],
+                    "related_course_ids": [],
+                    "evidence_course_ids": ["AI101"],
+                },
+                "final_response_mode": "no_result",
+                "final_answer": "ยังไม่พบคอร์สครับ",
+                "grounding_status": "grounded",
+                "retrieved_context_raw": [{"course": {"course_id": "AI101"}}],
+                "related_courses": [],
+                "dialogue_state": {},
+            },
+        }
+
+        self.assertEqual(evaluation.score_turn(turn)["grounding"], evaluation.FAIL)
+
+    def test_exact_course_lookup_counts_as_current_turn_grounding(self) -> None:
+        observed = {
+            "plan": {"clarification_requires_retrieval": False},
+            "final_response_mode": "clarify_with_suggestion",
+            "final_result": {
+                "referenced_course_ids": ["AI101"],
+                "clarification_options": [{"label": "AI101", "supporting_course_ids": ["AI101"]}],
+            },
+            "search_messages": [{"tool_calls": [{"name": "course_id", "args": {"course_id": "AI101"}}]}],
+            "retrieved_context_raw": [{"tool_name": "course_id", "course": {"course_id": "AI101"}}],
+            "grounding_status": "grounded",
+        }
+
+        self.assertEqual(evaluation._clarification_grounding_score(observed), evaluation.PASS)
 
     @patch("src.main.run_chatbot")
     def test_api_accepts_missing_dialogue_state_for_backwards_compatibility(self, run_chatbot) -> None:

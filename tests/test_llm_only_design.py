@@ -138,7 +138,7 @@ class LlmOnlyDesignTests(unittest.TestCase):
         self.assertEqual(finalizer.call_count, 2)
         self.assertEqual(verifier.call_count, 2)
         self.assertEqual(result["grounding_status"], "corrected")
-        self.assertEqual(result["final_answer"], "แก้แล้ว")
+        self.assertEqual(result["final_answer"], "แก้แล้วครับ")
 
     def test_provider_prefixed_structured_tool_name_still_parses(self):
         raw = AIMessage(content="", tool_calls=[{

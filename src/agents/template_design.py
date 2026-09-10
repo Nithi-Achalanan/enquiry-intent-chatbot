@@ -126,10 +126,13 @@ class GuidePlan(BaseModel):
             raise ValueError("clarification modes require clarification_target")
         if asks and not self.clarification_requires_retrieval and not self.clarification_question:
             raise ValueError("non-retrieval clarification requires one clarification question")
-        if self.clarification_requires_retrieval and not self.clarification_option_goal:
+        needs_grounded_clarification = (
+            self.clarification_needed
+            and self.clarification_requires_retrieval
+            and asks
+        )
+        if needs_grounded_clarification and not self.clarification_option_goal:
             raise ValueError("retrieval-backed clarification requires clarification_option_goal")
-        if self.clarification_requires_retrieval and not asks:
-            raise ValueError("clarification_requires_retrieval is valid only for clarification modes")
         if asks and self.clarification_strategy not in {
             ClarificationStrategy.ASK_REQUIRED,
             ClarificationStrategy.ASK_OPTIONAL,
@@ -144,6 +147,9 @@ GUIDE_SYSTEM_PROMPT = """You are Agent 1: the Template / Guide / How-to-Answer A
 
 Understand the current enquiry semantically from the conversation, structured dialogue state,
 and current query. Do not answer the user and do not call tools. Produce the GuidePlan contract.
+Every GuidePlan field is private operational metadata for Agent 2. Keep decision_summary,
+answer_instruction, retrieval_direction, missing_information, and assumptions as concise internal
+notes; they must never be presented or paraphrased as a user-facing reply.
 
 SEMANTIC CONTRACT
 - semantic_intent is a flexible description of what the user is trying to achieve.

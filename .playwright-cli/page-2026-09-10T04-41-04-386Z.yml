@@ -1,0 +1,46 @@
+- main [ref=e2]:
+  - complementary [ref=e3]:
+    - link "Enquiry Intent Chatbot home" [ref=e4] [cursor=pointer]:
+      - /url: /
+      - generic [aria-hidden] [ref=e5]: 🤖
+      - generic [ref=e6]:
+        - strong [ref=e7]: Enquiry IntentChatbot
+        - generic [ref=e8]: Course Assistant
+    - navigation "Primary navigation" [ref=e9]:
+      - link "Chat" [ref=e10] [cursor=pointer]:
+        - /url: "#chat"
+        - generic [aria-hidden] [ref=e11]: ◌
+        - text: Chat
+      - link "Explore Courses" [ref=e12] [cursor=pointer]:
+        - /url: "#courses"
+        - generic [aria-hidden] [ref=e13]: ♧
+        - text: Explore Courses
+      - link "My Enquiries" [ref=e14] [cursor=pointer]:
+        - /url: "#enquiries"
+        - generic [aria-hidden] [ref=e15]: ▤
+        - text: My Enquiries
+      - link "Help & Support" [ref=e16] [cursor=pointer]:
+        - /url: "#help"
+        - generic [aria-hidden] [ref=e17]: "?"
+        - text: Help & Support
+    - region "About the assistant" [ref=e18]:
+      - text: ✦
+      - heading "Learn Today Build Tomorrow" [level=2] [ref=e19]: Learn TodayBuild Tomorrow
+      - paragraph [ref=e20]: Get answers about our courses, programs and admissions instantly.
+  - region "Course assistant chat" [ref=e25]:
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [aria-hidden] [ref=e28]: ☾
+        - generic [ref=e29]:
+          - strong [ref=e30]: Good evening!
+          - generic [ref=e31]: Here to help with your learning journey.
+      - button "Reset chat history" [ref=e32] [cursor=pointer]: ↻ Reset chat
+    - log "Conversation" [ref=e33]:
+      - article [ref=e54]:
+        - generic [aria-hidden] [ref=e55]: 🤖
+        - generic [ref=e56]: Hi! I’m your course assistant. I can help you with information about our courses, fees, duration, prerequisites and more. What would you like to know?
+    - generic [ref=e38]:
+      - generic [aria-hidden] [ref=e39]: ⌕
+      - textbox "⌕" [active] [ref=e40]:
+        - /placeholder: Ask about a course...
+      - button "Send" [ref=e41] [cursor=pointer]: ↗ Send
