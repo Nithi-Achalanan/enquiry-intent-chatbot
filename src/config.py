@@ -43,11 +43,11 @@ def _positive_number(name: str, default: float, value_type: type[float] | type[i
 
 def get_model_configuration() -> ModelConfiguration:
     """Return validated AI configuration without exposing secret values."""
-    api_key = _environment_value("GROQ_API_KEY")
-    model = _environment_value("GROQ_MODEL")
+    api_key = _environment_value("API_KEY")
+    model = _environment_value("MODEL")
     missing = [
         name
-        for name, value in (("GROQ_API_KEY", api_key), ("GROQ_MODEL", model))
+        for name, value in (("API_KEY", api_key), ("MODEL", model))
         if value is None
     ]
     if missing:
@@ -59,6 +59,6 @@ def get_model_configuration() -> ModelConfiguration:
     return ModelConfiguration(
         api_key=api_key,
         model=model,
-        timeout_seconds=float(_positive_number("GROQ_TIMEOUT_SECONDS", 30.0, float)),
-        retry_attempts=int(_positive_number("GROQ_RETRY_ATTEMPTS", 2, int, allow_zero=True)),
+        timeout_seconds=float(_positive_number("OPENAI_TIMEOUT_SECONDS", 30.0, float)),
+        retry_attempts=int(_positive_number("OPENAI_RETRY_ATTEMPTS", 2, int, allow_zero=True)),
     )

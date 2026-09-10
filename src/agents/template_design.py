@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, model_validator
 
 from src.config import get_model_configuration
@@ -276,11 +276,11 @@ def load_intent_examples() -> list[dict[str, Any]]:
 @lru_cache(maxsize=1)
 def _get_guide_model():
     configuration = get_model_configuration()
-    llm = ChatGroq(
+    llm = ChatOpenAI(
         model=configuration.model,
         temperature=0,
         api_key=configuration.api_key,
-        timeout=(5.0, configuration.timeout_seconds),
+        timeout=configuration.timeout_seconds,
         max_retries=0,
     )
     return llm.with_structured_output(

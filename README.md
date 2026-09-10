@@ -2,7 +2,7 @@
 
 This repository was created entirely by **Nithi Achalanan** individually.
 
-A two-agent conversational course-enquiry system built with **LangGraph**, **LangChain**, **Groq**, and **FastAPI**.
+A two-agent conversational course-enquiry system built with **LangGraph**, **LangChain**, **OpenAI**, and **FastAPI**.
 
 The project is designed around **Enquiry Intent Detection**, but the intent layer is intentionally more capable than a normal classifier. Instead of only assigning a label to each message, the system:
 
@@ -965,10 +965,10 @@ pip install -r requirements.txt
 Copy `.env.example` to `.env`, then configure:
 
 ```env
-GROQ_API_KEY=YOUR_GROQ_API_KEY
-GROQ_MODEL=openai/gpt-oss-20b
-GROQ_TIMEOUT_SECONDS=30
-GROQ_RETRY_ATTEMPTS=2
+API_KEY=YOUR_OPENAI_API_KEY
+MODEL=gpt-4.1-mini
+OPENAI_TIMEOUT_SECONDS=30
+OPENAI_RETRY_ATTEMPTS=2
 ```
 
 Do not commit API credentials.
@@ -1142,8 +1142,8 @@ Useful metrics include:
 The project includes model reliability configuration for:
 
 ```text
-GROQ_TIMEOUT_SECONDS
-GROQ_RETRY_ATTEMPTS
+OPENAI_TIMEOUT_SECONDS
+OPENAI_RETRY_ATTEMPTS
 ```
 
 Transient provider failures are handled with bounded retry logic rather than unbounded attempts.
@@ -1171,8 +1171,8 @@ The local course catalogue is the factual source of truth for course names, IDs,
 - Python
 - LangGraph
 - LangChain Core
-- LangChain Groq
-- Groq API
+- LangChain OpenAI
+- OpenAI API
 - Pydantic
 - FastAPI
 - Uvicorn

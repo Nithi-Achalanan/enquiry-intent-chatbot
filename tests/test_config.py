@@ -12,7 +12,7 @@ class ModelConfigurationTests(unittest.TestCase):
         environment = {
             key: value
             for key, value in os.environ.items()
-            if key not in {"GROQ_API_KEY", "GROQ_MODEL"}
+            if key not in {"API_KEY", "MODEL", "OPENAI_TIMEOUT_SECONDS", "OPENAI_RETRY_ATTEMPTS"}
         }
         environment.update(values)
         return environment
@@ -20,42 +20,42 @@ class ModelConfigurationTests(unittest.TestCase):
     def test_missing_api_key_is_rejected(self) -> None:
         with patch.dict(
             os.environ,
-            self._environment(GROQ_MODEL="openai/gpt-oss-20b"),
+            self._environment(MODEL="gpt-4.1-mini"),
             clear=True,
         ):
-            with self.assertRaisesRegex(ModelConfigurationError, "GROQ_API_KEY"):
+            with self.assertRaisesRegex(ModelConfigurationError, "API_KEY"):
                 get_model_configuration()
 
     def test_missing_model_is_rejected(self) -> None:
         with patch.dict(
             os.environ,
-            self._environment(GROQ_API_KEY="test-key"),
+            self._environment(API_KEY="test-key"),
             clear=True,
         ):
-            with self.assertRaisesRegex(ModelConfigurationError, "GROQ_MODEL"):
+            with self.assertRaisesRegex(ModelConfigurationError, "MODEL"):
                 get_model_configuration()
 
     def test_model_name_is_trimmed(self) -> None:
         with patch.dict(
             os.environ,
             self._environment(
-                GROQ_API_KEY="test-key",
-                GROQ_MODEL="  openai/gpt-oss-20b  ",
+                API_KEY="test-key",
+                MODEL="  gpt-4.1-mini  ",
             ),
             clear=True,
         ):
             configuration = get_model_configuration()
 
-        self.assertEqual(configuration.model, "openai/gpt-oss-20b")
+        self.assertEqual(configuration.model, "gpt-4.1-mini")
 
     def test_timeout_and_retry_settings_are_configurable(self) -> None:
         with patch.dict(
             os.environ,
             self._environment(
-                GROQ_API_KEY="test-key",
-                GROQ_MODEL="openai/gpt-oss-20b",
-                GROQ_TIMEOUT_SECONDS="12.5",
-                GROQ_RETRY_ATTEMPTS="1",
+                API_KEY="test-key",
+                MODEL="gpt-4.1-mini",
+                OPENAI_TIMEOUT_SECONDS="12.5",
+                OPENAI_RETRY_ATTEMPTS="1",
             ),
             clear=True,
         ):
