@@ -1,5 +1,7 @@
 # Enquiry Intent Chatbot
 
+The chat interface keeps long conversations scrollable in the message pane, renders assistant replies with safe Markdown formatting, clamps related-course descriptions to two lines, and includes a Reset chat button that clears the current browser session.
+
 This repository was created entirely by **Nithi Achalanan** individually.
 
 A two-agent conversational course-enquiry system built with **LangGraph**, **LangChain**, **OpenAI**, and **FastAPI**.
@@ -554,6 +556,16 @@ Used when profile evidence materially improves:
 - personal comparison.
 
 Personal data is an evidence source, **not another intent family**.
+
+### Finalization normalization
+
+Agent 2 builds one `EvidenceIndex` from current-turn tool artifacts before validating its structured
+answer. The finalizer can repair unambiguous evidence-backed ID omissions, propagates recommendation
+and comparison selections to Related Course cards, preserves grounded clarification suggestions, and
+distinguishes incomplete structured output from a genuine no-result outcome. Exact `course_id`
+lookups remain sufficient evidence for follow-up claims about a previously resolved course.
+Guide plans remain internal metadata, while Thai user-facing responses use a friendly male voice and
+end politely with `ครับ`.
 
 ---
 

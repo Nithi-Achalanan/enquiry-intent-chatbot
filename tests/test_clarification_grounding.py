@@ -123,6 +123,34 @@ class ClarificationStateTests(unittest.TestCase):
 
 
 class GuideClarificationContractTests(unittest.TestCase):
+    def test_compare_retrieval_flag_does_not_require_clarification_goal(self):
+        plan = GuidePlan.model_validate(
+            guide_plan(
+                intent_family="compare_courses",
+                planned_response_mode="compare",
+                clarification_needed=False,
+                clarification_strategy="none",
+                clarification_target=None,
+                clarification_requires_retrieval=True,
+                clarification_option_goal=None,
+            )
+        )
+
+        self.assertEqual(plan.planned_response_mode, "compare")
+        self.assertTrue(plan.clarification_requires_retrieval)
+        self.assertIsNone(plan.clarification_option_goal)
+
+    def test_retrieval_backed_clarification_still_requires_clarification_goal(self):
+        with self.assertRaisesRegex(
+            ValidationError,
+            "retrieval-backed clarification requires clarification_option_goal",
+        ):
+            GuidePlan.model_validate(
+                guide_plan(
+                    clarification_option_goal=None,
+                )
+            )
+
     def test_topic_change_does_not_inherit_exhausted_same_target_limit(self):
         prior = DialogueState(
             pending_clarification=PendingClarification(

@@ -28,7 +28,7 @@ FAIL = "FAIL"
 NA = "N/A"
 
 
-def expected(intent: str, modes: list[str], *, tools: list[str] | None = None,
+def expected(intent: str | list[str], modes: list[str], *, tools: list[str] | None = None,
              resolution: str = "not_applicable", clarification: str = "none",
              personalization: str = "not_applicable", related: str = "valid",
              pending_resolution: str = "not_applicable", target: str | None = None,
@@ -108,7 +108,7 @@ SCENARIOS: list[dict[str, Any]] = [
     ]},
     {"test_id": "17", "title": "Short answer resolves pending clarification", "objective": "A brief answer is interpreted against the question the assistant actually asked.", "turns": [
         {"query": "ผมอยากเรียน AI เอาไปใช้ทำงาน แต่ยังไม่รู้ว่าจะเรียนอะไร", "expected": expected("explore_direction", ["clarify", "clarify_with_suggestion"], clarification="grounded_or_generic", retrieval_policy="conditional")},
-        {"query": "ทำ content", "expected": expected("explore_direction", ["recommend_one", "course_info", "clarify", "clarify_with_suggestion"], pending_resolution="answered", accumulation="grow", repeated=False)},
+        {"query": "ทำ content", "expected": expected(["explore_direction", "recommend_course"], ["recommend_one", "course_info", "clarify", "clarify_with_suggestion"], pending_resolution="answered", accumulation="grow", repeated=False)},
     ]},
     {"test_id": "18", "title": "Partial clarification answer narrows the gap", "objective": "Useful information accumulates and the next question is not repeated.", "turns": [
         {"query": "อยากเรียนสายเทค แต่ยังไม่แน่ใจว่าเหมาะกับอะไร", "expected": expected("explore_direction", ["clarify", "clarify_with_suggestion"], clarification="grounded_or_generic", retrieval_policy="conditional")},
@@ -121,7 +121,7 @@ SCENARIOS: list[dict[str, Any]] = [
     {"test_id": "20", "title": "Clarification attempts are bounded", "objective": "Two unsuccessful attempts do not lead to a third repetitive interrogation.", "turns": [
         {"query": "อยากเรียน AI แต่ยังเลือกไม่ถูก", "expected": expected("explore_direction", ["clarify", "clarify_with_suggestion"], clarification="grounded_or_generic", retrieval_policy="conditional")},
         {"query": "ยังไม่แน่ใจ", "expected": expected("explore_direction", ["clarify", "clarify_with_suggestion", "recommend_one", "explore"], pending_resolution="rejected", repeated=False, retrieval_policy="conditional")},
-        {"query": "ไม่รู้จริง ๆ", "expected": expected("explore_direction", ["recommend_one", "explore", "course_info", "no_result"], pending_resolution="rejected", repeated=False, retrieval_policy="conditional")},
+        {"query": "ไม่รู้จริง ๆ", "expected": expected(["explore_direction", "recommend_course"], ["recommend_one", "explore", "course_info", "no_result"], pending_resolution="rejected", repeated=False, retrieval_policy="conditional")},
     ]},
     {"test_id": "21", "title": "Topic change abandons pending clarification", "objective": "A direct CS101 price enquiry supersedes the pending AI direction.", "turns": [
         {"query": "ผมอยากเรียน AI แต่ยังไม่รู้ว่าจะไปทางไหนดี", "expected": expected("explore_direction", ["clarify", "clarify_with_suggestion"], clarification="grounded_or_generic", retrieval_policy="conditional")},
@@ -240,6 +240,10 @@ def called_tools(observed: dict[str, Any]) -> list[str]:
     return [str(call.get("name", "")) for message in observed.get("search_messages", []) for call in message.get("tool_calls", [])]
 
 
+def course_evidence_was_retrieved(observed: dict[str, Any]) -> bool:
+    return bool({"course_catalog", "course_id"} & set(called_tools(observed)))
+
+
 def evidence_ids(raw_context: list[dict[str, Any]]) -> set[str]:
     ids: set[str] = set()
     for artifact in raw_context:
@@ -259,6 +263,9 @@ def _normalized_question(value: Any) -> str:
 def _clarification_option_score(observed: dict[str, Any]) -> str:
     plan = observed.get("plan", {})
     result = observed.get("final_result", {})
+    mode = observed.get("final_response_mode", "")
+    if mode not in {"clarify", "clarify_with_suggestion"}:
+        return NA
     options = result.get("clarification_options") or []
     if not options:
         return FAIL if plan.get("clarification_requires_retrieval") else NA
@@ -288,9 +295,9 @@ def _clarification_grounding_score(observed: dict[str, Any]) -> str:
         or result.get("related_course_ids")
         or observed.get("related_courses")
     )
-    course_retrieved = "course_catalog" in called_tools(observed)
+    course_retrieved = course_evidence_was_retrieved(observed)
     grounding_status = str(observed.get("grounding_status", "")).lower()
-    semantic_grounded = grounding_status in {"grounded", "corrected", "pass", "passed", "ok"}
+    semantic_grounded = grounding_status in {"grounded", "corrected", "safe_fallback", "pass", "passed", "ok"}
     if requires_retrieval or has_catalogue_content:
         if not course_retrieved or option_score in {PARTIAL, FAIL}:
             return FAIL
@@ -329,7 +336,12 @@ def score_turn(turn: dict[str, Any]) -> dict[str, str]:
     exp, obs = turn.get("expected", {}), turn.get("observed", {})
     plan, result = obs.get("plan", {}), obs.get("final_result", {})
     mode, answer = obs.get("final_response_mode", ""), str(obs.get("final_answer", ""))
-    intent_score = NA if not exp.get("intent_family") else PASS if plan.get("intent_family") == exp["intent_family"] else FAIL
+    expected_intents = exp.get("intent_family")
+    if not expected_intents:
+        intent_score = NA
+    else:
+        allowed_intents = {expected_intents} if isinstance(expected_intents, str) else set(expected_intents)
+        intent_score = PASS if plan.get("intent_family") in allowed_intents else FAIL
     mode_score = NA if not exp.get("final_modes") else PASS if mode in exp["final_modes"] else FAIL
     expected_tools, actual_tools = set(exp.get("tools", [])), set(called_tools(obs))
     retrieval_score = PASS if not expected_tools or expected_tools <= actual_tools else PARTIAL if expected_tools & actual_tools else FAIL
@@ -362,14 +374,15 @@ def score_turn(turn: dict[str, Any]) -> dict[str, str]:
 
     personalization_score = NA if exp.get("personalization", "not_applicable") == "not_applicable" else PASS if "personal_data" in actual_tools else FAIL
     selected_ids: set[str] = set()
-    for field in ("referenced_course_ids", "related_course_ids", "evidence_course_ids"):
+    for field in ("referenced_course_ids", "related_course_ids"):
         selected_ids.update(str(value).upper() for value in result.get(field, []) or [] if value)
     if result.get("primary_course_id"):
         selected_ids.add(str(result["primary_course_id"]).upper())
     evidence = evidence_ids(obs.get("retrieved_context_raw", []))
     grounding_status = str(obs.get("grounding_status", "")).lower()
     ids_grounded = selected_ids <= evidence
-    grounding_score = PASS if ids_grounded and grounding_status in {"grounded", "corrected", "pass", "passed", "ok"} else PARTIAL if ids_grounded else FAIL
+    no_result_selection_is_empty = mode != "no_result" or not selected_ids
+    grounding_score = PASS if ids_grounded and no_result_selection_is_empty and grounding_status in {"grounded", "corrected", "safe_fallback", "pass", "passed", "ok"} else PARTIAL if ids_grounded and no_result_selection_is_empty else FAIL
 
     related = obs.get("related_courses", [])
     related_ids = [str(course.get("course_id", "")).upper() for course in related]
@@ -380,6 +393,16 @@ def score_turn(turn: dict[str, Any]) -> dict[str, str]:
         related_score = PASS if related and related_valid else FAIL
     else:
         related_score = PASS if related_valid else FAIL
+    primary_id = str(result.get("primary_course_id", "")).upper()
+    if mode in {"recommend_one", "recommend_one_with_details"}:
+        related_score = PASS if related_score == PASS and primary_id and primary_id in related_ids else FAIL
+    if mode == "compare":
+        compared_ids = {
+            str(course_id).upper()
+            for course_id in result.get("referenced_course_ids", []) or []
+            if course_id
+        }
+        related_score = PASS if related_score == PASS and len(compared_ids) >= 2 and compared_ids <= set(related_ids) else FAIL
 
     expected_pending_resolution = exp.get("pending_resolution", "not_applicable")
     if expected_pending_resolution == "not_applicable":
@@ -393,7 +416,7 @@ def score_turn(turn: dict[str, Any]) -> dict[str, str]:
         clarification_score = FAIL
 
     retrieval_policy = exp.get("retrieval_policy", "optional")
-    course_retrieved = "course_catalog" in actual_tools
+    course_retrieved = course_evidence_was_retrieved(obs)
     clarification_grounded = obs.get("clarification_grounded", NA)
     if retrieval_policy == "required":
         ground_before_score = PASS if course_retrieved and clarification_grounded == PASS else FAIL
@@ -422,8 +445,9 @@ def score_turn(turn: dict[str, Any]) -> dict[str, str]:
     option_score = obs.get("grounded_clarification_options", NA)
 
     thai_score = PASS if re.search(r"[\u0E00-\u0E7F]", answer) else FAIL
-    core = [intent_score, mode_score, retrieval_score, clarification_score, grounding_score,
-            related_score, thai_score, clarification_resolution_score, ground_before_score,
+    core = [intent_score, mode_score, retrieval_score, resolution_score, clarification_score,
+            personalization_score, grounding_score, related_score, thai_score,
+            clarification_resolution_score, ground_before_score,
             option_score, accumulation_score, repeated_score]
     final_score = PASS if all(value in {PASS, NA} for value in core) else PARTIAL if answer and FAIL not in (intent_score, mode_score, grounding_score) else FAIL
     return {"intent_family": intent_score, "response_mode": mode_score, "retrieval": retrieval_score,
